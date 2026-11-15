@@ -76,6 +76,16 @@ body{padding-bottom:96px}
 header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sbtn{flex:none;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;color:var(--ink);cursor:pointer;background:linear-gradient(145deg,rgba(255,255,255,.4),rgba(255,255,255,.12));-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:inset 0 1.5px 0 var(--glass-hi),0 8px 22px var(--shadow);transition:transform .15s}
 .sbtn:active{transform:scale(.95)}
+.dayhead{align-items:center;cursor:pointer}
+.dright{display:flex;align-items:center;gap:10px}
+.dtoggle{border:0;background:rgba(255,255,255,.35);color:var(--ink);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.dtoggle:focus-visible{outline:2px solid #5aa0ff}
+.chev{display:block;width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-1px,-1px);transition:transform .2s}
+.dtoggle[aria-expanded="true"] .chev{transform:rotate(-135deg) translate(-1px,-1px)}
+.entries{margin-top:4px}
+.streak{display:flex;justify-content:space-between;align-items:center;gap:10px;border-radius:22px;padding:14px 18px;margin-bottom:14px;font-size:16px;font-weight:600;background:linear-gradient(145deg,rgba(255,196,120,.42),rgba(255,150,170,.16));-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:inset 0 1.5px 0 var(--glass-hi),0 12px 30px var(--shadow)}
+.snum{font-size:28px;margin:0 3px;font-variant-numeric:tabular-nums}
+.sright{font-size:13px;font-weight:500;color:var(--mute);white-space:nowrap}
 .sbtn:focus-visible{outline:3px solid #5aa0ff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.tile,.count.bump{transition:none;animation:none}}
 </style>
@@ -227,7 +237,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
     if(e.key==="Enter")commit();
     if(e.key==="Escape")closeModal();
   });
-  var logList=document.getElementById("logList"),pageTitle=document.getElementById("pageTitle");
+  var logList=document.getElementById("logList"),pageTitle=document.getElementById("pageTitle"),openDays={};
   function p2(n){return n<10?"0"+n:""+n;}
   function dkey(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());}
   function dlabel(d){
@@ -247,16 +257,29 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
     logs.slice().sort(function(a,b){return b.t-a.t;}).forEach(function(l){
       var k=dkey(new Date(l.t));if(!days[k]){days[k]=[];order.push(k);}days[k].push(l);
     });
+    var dset={};order.forEach(function(k){dset[k]=1;});
+    var streak=0,cur=new Date();cur.setHours(12,0,0,0);
+    if(!dset[dkey(cur)])cur=new Date(cur.getTime()-864e5);
+    while(dset[dkey(cur)]){streak++;cur=new Date(cur.getTime()-864e5);}
+    var sc=el("section","streak"),sl=el("div","sleft");
+    if(streak>0){sl.appendChild(document.createTextNode("\ud83d\udd25 \u5df2\u9023\u7e8c\u8a18\u9304"));sl.appendChild(el("b","snum",String(streak)));sl.appendChild(document.createTextNode("\u5929"));}
+    else sl.appendChild(document.createTextNode("\ud83d\udd25 \u4eca\u65e5\u8a18\u9304\u4e00\u4e0b\uff0c\u5c31\u958b\u59cb\u9023\u7e8c\u8a18\u9304"));
+    sc.appendChild(sl);sc.appendChild(el("div","sright","\u7d2f\u8a08 "+order.length+" \u5929"));
+    logList.appendChild(sc);
     order.forEach(function(k){
       var arr=days[k],card=el("section","day"),head=el("div","dayhead");
       head.appendChild(el("span","dtitle",dlabel(new Date(arr[0].t))));
-      head.appendChild(el("span","dtotal","共 "+arr.length+" 次"));
+      var right=el("span","dright");right.appendChild(el("span","dtotal","共 "+arr.length+" 次"));
+      var tg=el("button","dtoggle");tg.setAttribute("aria-label","展開明細");tg.setAttribute("aria-expanded",openDays[k]?"true":"false");tg.appendChild(el("span","chev"));
+      right.appendChild(tg);head.appendChild(right);
       card.appendChild(head);
       var sums={},sorder=[];
       arr.forEach(function(l){var key=l.id||l.name;if(!sums[key]){sums[key]={l:l,n:0};sorder.push(key);}sums[key].n++;});
       var chips=el("div","chips");
       sorder.forEach(function(key){var s=sums[key],c=el("span","chip",nameOf(s.l)+" × "+s.n);c.style.setProperty("--h",hueOf(s.l.id));chips.appendChild(c);});
       card.appendChild(chips);
+      var box=el("div","entries");box.hidden=!openDays[k];card.appendChild(box);
+      head.addEventListener("click",function(){openDays[k]=!openDays[k];box.hidden=!openDays[k];tg.setAttribute("aria-expanded",openDays[k]?"true":"false");});
       arr.forEach(function(l){
         var d=new Date(l.t),row=el("div","entry");
         row.appendChild(el("span","etime",p2(d.getHours())+":"+p2(d.getMinutes())));
@@ -269,7 +292,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
           
           saveLogs();renderLog();render();sleepInfo();
         });
-        row.appendChild(x);card.appendChild(row);
+        row.appendChild(x);box.appendChild(row);
       });
       logList.appendChild(card);
     });
