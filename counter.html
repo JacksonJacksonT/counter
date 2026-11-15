@@ -84,6 +84,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .chev{display:block;width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-1px,-1px);transition:transform .2s}
 .dtoggle[aria-expanded="true"] .chev{transform:rotate(-135deg) translate(-1px,-1px)}
 .entries{margin-top:4px}
+.stepper{display:flex;gap:8px;align-items:center}
+.stepper input{flex:1;min-width:0;text-align:center}
+.stepper .btn{flex:none;padding:10px 14px}
 .streak{display:flex;justify-content:space-between;align-items:center;gap:10px;border-radius:22px;padding:14px 18px;margin-bottom:14px;font-size:16px;font-weight:600;background:linear-gradient(145deg,rgba(255,196,120,.42),rgba(255,150,170,.16));-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:inset 0 1.5px 0 var(--glass-hi),0 12px 30px var(--shadow)}
 .snum{font-size:28px;margin:0 3px;font-variant-numeric:tabular-nums}
 .sright{font-size:13px;font-weight:500;color:var(--mute);white-space:nowrap}
@@ -111,7 +114,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
   <div class="sheet">
     <h2 id="mTitle">新增一格</h2>
     <label>名稱<input id="mName" maxlength="20" placeholder="例如：喝水" autocomplete="off"></label>
-    <label id="mCountWrap">今日數目<input id="mCount" type="number" inputmode="numeric" step="1"></label>
+    <label id="mCountWrap">今日數目<span class="stepper"><button type="button" class="btn" id="mMinus">−1</button><input id="mCount" type="number" inputmode="numeric" step="1"><button type="button" class="btn" id="mPlus">+1</button></span></label>
     <div class="row">
       <button class="btn danger" id="mDel">刪除</button>
       <button class="btn" id="mCancel">取消</button>
@@ -232,6 +235,8 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 
   document.getElementById("mSave").addEventListener("click",commit);
   document.getElementById("mCancel").addEventListener("click",closeModal);
+  document.getElementById("mMinus").addEventListener("click",function(){var v=parseInt(mCount.value,10);if(isNaN(v))v=0;mCount.value=Math.max(0,v-1);});
+  document.getElementById("mPlus").addEventListener("click",function(){var v=parseInt(mCount.value,10);if(isNaN(v))v=0;mCount.value=v+1;});
   mDel.addEventListener("click",function(){
     if(!current)return;
     if(!confirm("確定刪除「"+current.name+"」？"))return;
@@ -241,7 +246,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
   modal.addEventListener("click",function(e){if(e.target===modal)closeModal();});
   document.addEventListener("keydown",function(e){
     if(!modal.classList.contains("open"))return;
-    if(e.key==="Enter")commit();
+    if(e.key==="Enter"&&e.target.tagName!=="BUTTON")commit();
     if(e.key==="Escape")closeModal();
   });
   var logList=document.getElementById("logList"),pageTitle=document.getElementById("pageTitle"),openDays={};
