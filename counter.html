@@ -76,6 +76,7 @@ body{padding-bottom:96px}
 header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sbtn{flex:none;font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;color:var(--ink);cursor:pointer;background:linear-gradient(145deg,rgba(255,255,255,.4),rgba(255,255,255,.12));-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:inset 0 1.5px 0 var(--glass-hi),0 8px 22px var(--shadow);transition:transform .15s}
 .sbtn:active{transform:scale(.95)}
+.warn{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:12px;right:12px;z-index:30;padding:12px 16px;border-radius:18px;background:rgba(214,51,108,.92);color:#fff;font-size:14px;line-height:1.5;text-align:center;box-shadow:0 10px 30px var(--shadow)}
 .dayhead{align-items:center;cursor:pointer}
 .dright{display:flex;align-items:center;gap:10px}
 .dtoggle{border:0;background:rgba(255,255,255,.35);color:var(--ink);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
@@ -91,7 +92,8 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 </style>
 </head>
 <body>
-<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<div class="blob b1"></div>
+<div class="warn" id="saveWarn" hidden>儲存失敗：瀏覽器儲存空間可能已滿或被禁用，請即刻用「備份 / 還原」複製備份。（點一下關閉）</div><div class="blob b2"></div><div class="blob b3"></div>
 <header><h1 id="pageTitle">計數器</h1><button class="sbtn" id="sleepToggle"></button></header>
 <div id="viewCount">
 <main><div class="grid" id="grid"></div></main>
@@ -136,11 +138,15 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
   var KEY="counter-items-v1",HUES=[210,265,330,20,150,45,185,295];
   var items=[];
   try{var raw=localStorage.getItem(KEY);if(raw){var p=JSON.parse(raw);if(Array.isArray(p))items=p;}}catch(e){}
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(items));}catch(e){}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(items));}catch(e){warn();}}
   var LKEY="counter-logs-v1",logs=[];
   try{var lr=localStorage.getItem(LKEY);if(lr){var lp=JSON.parse(lr);if(Array.isArray(lp))logs=lp;}}catch(e){}
-  function saveLogs(){try{localStorage.setItem(LKEY,JSON.stringify(logs));}catch(e){}}
+  function saveLogs(){try{localStorage.setItem(LKEY,JSON.stringify(logs));}catch(e){warn();}}
+  var warned=false;
+  function warn(){if(warned)return;warned=true;var w=document.getElementById("saveWarn");if(w){w.hidden=false;w.onclick=function(){w.hidden=true;};}}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  var lastDay=dkey(new Date());
+  function checkDay(){if(dkey(new Date())!==lastDay){render();return true;}return false;}
   function todayCount(id){var k=dkey(new Date()),n=0;for(var i=0;i<logs.length;i++)if(logs[i].id===id&&dkey(new Date(logs[i].t))===k)n++;return n;}
   function setToday(it,v){
     var cur=todayCount(it.id);
@@ -162,6 +168,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
   var current=null;
 
   function render(){
+    lastDay=dkey(new Date());
     grid.innerHTML="";
     items.forEach(function(it,i){
       var b=document.createElement("button");
@@ -188,7 +195,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
       b.addEventListener("click",function(){
         if(long){long=false;return;}
         logs.push({t:Date.now(),id:it.id,name:it.name});saveLogs();
-        c.textContent=todayCount(it.id);
+        if(!checkDay())c.textContent=todayCount(it.id);
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -312,7 +319,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
   });
   document.getElementById("bkRestore").addEventListener("click",function(){
     var d;try{d=JSON.parse(bkText.value);}catch(e){}
-    if(!d||!Array.isArray(d.items)||!Array.isArray(d.logs)){bkMsg.textContent="資料格式唔啱，請貼上完整嘅備份文字。";return;}
+    d=cleanBackup(d);if(!d){bkMsg.textContent="資料格式唔啱，請貼上完整嘅備份文字。";return;}
     if(!confirm("還原會覆蓋呢部裝置而家嘅所有資料，確定？"))return;
     items=d.items;logs=d.logs;
     items.forEach(function(it){if(!it.id)it.id=uid();});
@@ -327,6 +334,23 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
     pageTitle.textContent=isLog?"記錄":"計數器";
     if(isLog)renderLog();window.scrollTo(0,0);
   });});
+  function cleanBackup(d){
+    if(!d||!Array.isArray(d.items)||!Array.isArray(d.logs))return null;
+    var its=[],lgs=[],i;
+    for(i=0;i<d.items.length;i++){
+      var it=d.items[i];
+      if(!it||typeof it.name!=="string")return null;
+      var o={id:(typeof it.id==="string"&&it.id)?it.id:uid(),name:it.name.slice(0,20),count:0};
+      if(typeof it.hue==="number")o.hue=it.hue;
+      its.push(o);
+    }
+    for(i=0;i<d.logs.length;i++){
+      var l=d.logs[i];
+      if(!l||typeof l.t!=="number"||!isFinite(l.t)||typeof l.id!=="string")return null;
+      lgs.push({t:l.t,id:l.id,name:typeof l.name==="string"?l.name:""});
+    }
+    return {items:its,logs:lgs};
+  }
   function lastOf(id){var b=null;logs.forEach(function(l){if(l.id===id&&(!b||l.t>b.t))b=l;});return b;}
   function hm(t){var d=new Date(t);return p2(d.getHours())+":"+p2(d.getMinutes());}
   function sleepInfo(){
