@@ -87,6 +87,12 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .stepper{display:flex;gap:8px;align-items:center}
 .stepper input{flex:1;min-width:0;text-align:center}
 .stepper .btn{flex:none;padding:10px 14px}
+.rw{position:relative;width:86px;height:86px;flex:none}
+.ring{position:absolute;inset:0;border-radius:50%;--p:0%;background:conic-gradient(hsl(var(--h),90%,58%) var(--p),rgba(255,255,255,.3) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 9px),#000 calc(100% - 8px));mask:radial-gradient(farthest-side,transparent calc(100% - 9px),#000 calc(100% - 8px))}
+.rw .count{position:absolute;left:0;right:0;top:0;line-height:86px;text-align:center;font-size:30px}
+.count .of{font-size:14px;font-weight:600;color:var(--mute);margin-left:1px}
+.tile.done{box-shadow:inset 0 1.5px 0 var(--glass-hi),inset 0 -10px 22px hsla(var(--h),90%,70%,.12),0 0 0 2px hsla(var(--h),90%,62%,.9),0 0 26px hsla(var(--h),95%,62%,.55),0 12px 30px var(--shadow)}
+.tile.done::after{content:"✓";position:absolute;top:10px;right:12px;width:24px;height:24px;border-radius:50%;background:hsl(var(--h),85%,50%);color:#fff;font-size:14px;font-weight:700;line-height:24px;text-align:center}
 .streak{display:flex;justify-content:space-between;align-items:center;gap:10px;border-radius:22px;padding:14px 18px;margin-bottom:14px;font-size:16px;font-weight:600;background:linear-gradient(145deg,rgba(255,196,120,.42),rgba(255,150,170,.16));-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:inset 0 1.5px 0 var(--glass-hi),0 12px 30px var(--shadow)}
 .snum{font-size:28px;margin:0 3px;font-variant-numeric:tabular-nums}
 .sright{font-size:13px;font-weight:500;color:var(--mute);white-space:nowrap}
@@ -115,6 +121,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
     <h2 id="mTitle">新增一格</h2>
     <label>名稱<input id="mName" maxlength="20" placeholder="例如：喝水" autocomplete="off"></label>
     <label id="mCountWrap">今日數目<span class="stepper"><button type="button" class="btn" id="mMinus">−1</button><input id="mCount" type="number" inputmode="numeric" step="1"><button type="button" class="btn" id="mPlus">+1</button></span></label>
+    <label id="mGoalWrap">每日目標（留空＝冇目標）<input id="mGoal" type="number" inputmode="numeric" min="1" step="1" placeholder="例如：8"></label>
     <div class="row">
       <button class="btn danger" id="mDel">刪除</button>
       <button class="btn" id="mCancel">取消</button>
@@ -179,7 +186,23 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
       b.style.setProperty("--h",it.hue!=null?it.hue:HUES[i%HUES.length]);
       var n=document.createElement("div");n.className="name";n.textContent=it.name;
       var c=document.createElement("div");c.className="count";c.textContent=todayCount(it.id);
-      b.appendChild(n);b.appendChild(c);
+      var goal=(typeof it.goal==="number"&&it.goal>0)?it.goal:0,ring=null;
+      if(goal){
+        var rw=document.createElement("div");rw.className="rw";
+        ring=document.createElement("div");ring.className="ring";
+        rw.appendChild(ring);rw.appendChild(c);b.appendChild(n);b.appendChild(rw);
+      }else{b.appendChild(n);b.appendChild(c);}
+      function paint(){
+        var cnt=todayCount(it.id);
+        if(!goal){c.textContent=cnt;return;}
+        c.textContent="";
+        var s1=document.createElement("span");s1.textContent=cnt;
+        var s2=document.createElement("span");s2.className="of";s2.textContent="/"+goal;
+        c.appendChild(s1);c.appendChild(s2);
+        ring.style.setProperty("--p",Math.min(100,cnt/goal*100)+"%");
+        b.classList.toggle("done",cnt>=goal);
+      }
+      paint();
       var timer=null,long=false,sx=0,sy=0;
       function clear(){clearTimeout(timer);b.classList.remove("press");}
       b.addEventListener("pointerdown",function(e){
@@ -198,7 +221,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
       b.addEventListener("click",function(){
         if(long){long=false;return;}
         logs.push({t:Date.now(),id:it.id,name:it.name});saveLogs();
-        if(!checkDay())c.textContent=todayCount(it.id);
+        if(!checkDay())paint();
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -215,6 +238,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
     mTitle.textContent=it?"編輯格子":"新增一格";
     mName.value=it?it.name:"";
     mCount.value=it?todayCount(it.id):0;
+    document.getElementById("mGoal").value=(it&&typeof it.goal==="number")?it.goal:"";
     mDel.style.display=it?"":"none";
     mCountWrap.style.display=it?"":"none";
     modal.classList.add("open");
@@ -224,11 +248,13 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 
   function commit(){
     var name=mName.value.trim()||"未命名";
+    var gv=parseInt(document.getElementById("mGoal").value,10),goal=(!isNaN(gv)&&gv>0)?gv:null;
     if(current){
       current.name=name;
+      if(goal)current.goal=goal;else delete current.goal;
       var v=parseInt(mCount.value,10);if(!isNaN(v)&&v>=0)setToday(current,v);
     }else{
-      items.push({id:uid(),name:name,count:0,hue:HUES[items.length%HUES.length]});
+      var ni={id:uid(),name:name,count:0,hue:HUES[items.length%HUES.length]};if(goal)ni.goal=goal;items.push(ni);
     }
     save();closeModal();render();
   }
@@ -347,6 +373,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
       if(!it||typeof it.name!=="string")return null;
       var o={id:(typeof it.id==="string"&&it.id)?it.id:uid(),name:it.name.slice(0,20),count:0};
       if(typeof it.hue==="number")o.hue=it.hue;
+      if(typeof it.goal==="number"&&isFinite(it.goal)&&it.goal>0)o.goal=Math.floor(it.goal);
       its.push(o);
     }
     for(i=0;i<d.logs.length;i++){
