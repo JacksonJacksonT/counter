@@ -81,7 +81,7 @@ body{padding-bottom:96px}
 <header><h1 id="pageTitle">計數器</h1></header>
 <div id="viewCount">
 <main><div class="grid" id="grid"></div></main>
-<div class="hint">按一下 +1，長按格子可編輯</div>
+<div class="hint">按一下 +1，長按格子可編輯。數字係今日次數，00:00 自動清零</div>
 <div class="hint"><button class="btn" id="bkBtn">備份 / 還原</button></div>
 </div>
 <div id="viewLog" hidden><main id="logList"></main></div>
@@ -94,7 +94,7 @@ body{padding-bottom:96px}
   <div class="sheet">
     <h2 id="mTitle">新增一格</h2>
     <label>名稱<input id="mName" maxlength="20" placeholder="例如：喝水" autocomplete="off"></label>
-    <label id="mCountWrap">數目<input id="mCount" type="number" inputmode="numeric" step="1"></label>
+    <label id="mCountWrap">今日數目<input id="mCount" type="number" inputmode="numeric" step="1"></label>
     <div class="row">
       <button class="btn danger" id="mDel">刪除</button>
       <button class="btn" id="mCancel">取消</button>
@@ -126,6 +126,19 @@ body{padding-bottom:96px}
   try{var lr=localStorage.getItem(LKEY);if(lr){var lp=JSON.parse(lr);if(Array.isArray(lp))logs=lp;}}catch(e){}
   function saveLogs(){try{localStorage.setItem(LKEY,JSON.stringify(logs));}catch(e){}}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  function todayCount(id){var k=dkey(new Date()),n=0;for(var i=0;i<logs.length;i++)if(logs[i].id===id&&dkey(new Date(logs[i].t))===k)n++;return n;}
+  function setToday(it,v){
+    var cur=todayCount(it.id);
+    if(v>cur){for(var i=0;i<v-cur;i++)logs.push({t:Date.now()+i,id:it.id,name:it.name});}
+    else if(v<cur){
+      var k=dkey(new Date()),idx=[];
+      logs.forEach(function(l,j){if(l.id===it.id&&dkey(new Date(l.t))===k)idx.push(j);});
+      idx.sort(function(a,b){return logs[b].t-logs[a].t;});
+      var rm=idx.slice(0,cur-v);
+      logs=logs.filter(function(l,j){return rm.indexOf(j)<0;});
+    }
+    saveLogs();
+  }
   var needSave=false;items.forEach(function(it){if(!it.id){it.id=uid();needSave=true;}});if(needSave)save();
 
   var grid=document.getElementById("grid");
@@ -140,7 +153,7 @@ body{padding-bottom:96px}
       b.className="tile";
       b.style.setProperty("--h",it.hue!=null?it.hue:HUES[i%HUES.length]);
       var n=document.createElement("div");n.className="name";n.textContent=it.name;
-      var c=document.createElement("div");c.className="count";c.textContent=it.count;
+      var c=document.createElement("div");c.className="count";c.textContent=todayCount(it.id);
       b.appendChild(n);b.appendChild(c);
       var timer=null,long=false,sx=0,sy=0;
       function clear(){clearTimeout(timer);b.classList.remove("press");}
@@ -159,8 +172,8 @@ body{padding-bottom:96px}
       b.addEventListener("contextmenu",function(e){e.preventDefault();});
       b.addEventListener("click",function(){
         if(long){long=false;return;}
-        it.count++;c.textContent=it.count;
         logs.push({t:Date.now(),id:it.id,name:it.name});saveLogs();
+        c.textContent=todayCount(it.id);
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -176,7 +189,7 @@ body{padding-bottom:96px}
     current=it;
     mTitle.textContent=it?"編輯格子":"新增一格";
     mName.value=it?it.name:"";
-    mCount.value=it?it.count:0;
+    mCount.value=it?todayCount(it.id):0;
     mDel.style.display=it?"":"none";
     mCountWrap.style.display=it?"":"none";
     modal.classList.add("open");
@@ -188,7 +201,7 @@ body{padding-bottom:96px}
     var name=mName.value.trim()||"未命名";
     if(current){
       current.name=name;
-      var v=parseInt(mCount.value,10);current.count=isNaN(v)?0:v;
+      var v=parseInt(mCount.value,10);if(!isNaN(v)&&v>=0)setToday(current,v);
     }else{
       items.push({id:uid(),name:name,count:0,hue:HUES[items.length%HUES.length]});
     }
@@ -246,9 +259,9 @@ body{padding-bottom:96px}
         row.appendChild(el("span","ename",nameOf(l)));
         var x=el("button","edel","×");x.setAttribute("aria-label","刪除這筆記錄");
         x.addEventListener("click",function(){
-          if(!confirm("刪除這筆記錄？該格數目會同時 −1。"))return;
+          if(!confirm("刪除這筆記錄？"))return;
           logs=logs.filter(function(z){return z!==l;});
-          var f=itemOf(l.id);if(f&&f.it.count>0){f.it.count--;save();}
+          
           saveLogs();renderLog();render();
         });
         row.appendChild(x);card.appendChild(row);
@@ -286,6 +299,10 @@ body{padding-bottom:96px}
     pageTitle.textContent=isLog?"記錄":"計數器";
     if(isLog)renderLog();window.scrollTo(0,0);
   });});
+  function msToMidnight(){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate()+1).getTime()-n.getTime()+500;}
+  function schedule(){setTimeout(function(){render();schedule();},msToMidnight());}
+  schedule();
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)render();});
   render();
 })();
 </script>
