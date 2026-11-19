@@ -237,6 +237,25 @@ body::after{opacity:.22}
 .chip{background:hsla(var(--h),85%,78%,.55);border:1px solid rgba(255,255,255,.75)}
 .dot{background:hsl(var(--h),80%,62%);box-shadow:0 0 5px hsla(var(--h),90%,65%,.5)}
 .tile:focus-visible,.pill:focus-visible{outline-color:hsla(var(--h),85%,62%,.85)}
+/* ===== 我頁 v2：名片 + 身份 + 目標 ===== */
+.mhero{position:relative;border-radius:30px;padding:20px 18px 16px;margin-bottom:4px;cursor:pointer;text-align:center;background:linear-gradient(160deg,rgba(255,255,255,.5),rgba(255,255,255,.12) 55%,rgba(255,255,255,.28));-webkit-backdrop-filter:blur(11px) saturate(190%) brightness(1.08);backdrop-filter:blur(11px) saturate(190%) brightness(1.08);border:1px solid rgba(255,255,255,.6);box-shadow:var(--rim),var(--drop)}
+.mnick{font-size:24px;font-weight:700;letter-spacing:.5px}
+.mmotto{font-size:14px;color:var(--mute);margin:4px 0 14px;line-height:1.5}
+.mstats{display:flex;gap:8px}
+.mstat{flex:1;border-radius:18px;padding:10px 4px;background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.7);display:flex;flex-direction:column;gap:2px}
+.mstat b{font-size:19px;font-variant-numeric:tabular-nums}
+.mstat span{font-size:12px;color:var(--mute)}
+.msec{margin:24px 6px 12px}
+.mtitle{font-size:18px;font-weight:700}
+.msub{font-size:13px;color:var(--mute);margin-top:2px}
+.pmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.pmain .ptext{flex:none}
+.pbar{display:block;height:7px;border-radius:99px;background:rgba(255,255,255,.55);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,hsl(var(--h),82%,62%),hsl(calc(var(--h) + 35),86%,68%))}
+.pnum{flex:none;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.pill.done{box-shadow:inset 0 0 0 1px rgba(255,255,255,.65),inset 0 1.5px 1px #fff,inset 0 0 22px rgba(255,255,255,.3),0 0 0 1.5px hsla(var(--h),85%,62%,.75),0 0 26px hsla(var(--h),90%,65%,.5),0 14px 30px hsla(var(--h),60%,55%,.24)}
+.sheet select{font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.5);color:var(--ink);outline:none}
+#meLinkWrap{display:flex;flex-direction:column;gap:12px}
 </style>
 </head>
 <body>
@@ -271,11 +290,24 @@ body::after{opacity:.22}
   </div>
 </div>
 
+<div class="modal" id="profModal" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <h2>我嘅名片</h2>
+    <label>暱稱<input id="pNick" maxlength="12" placeholder="想人點叫你" autocomplete="off"></label>
+    <label>格言<input id="pMotto" maxlength="40" placeholder="一句提醒自己嘅說話" autocomplete="off"></label>
+    <div class="row"><button class="btn" id="pCancel">取消</button><button class="btn primary" id="pSave">儲存</button></div>
+  </div>
+</div>
+
 <div class="modal" id="meModal" role="dialog" aria-modal="true">
   <div class="sheet">
     <h2 id="meTitle">新增</h2>
     <div class="seg"><button type="button" class="btn segb" data-type="identity" aria-pressed="true">身份</button><button type="button" class="btn segb" data-type="goal" aria-pressed="false">目標</button></div>
     <label>內容<textarea id="meText" maxlength="60" placeholder="例如：一個自律嘅人、今年跑完半馬"></textarea></label>
+    <div id="meLinkWrap">
+      <label>綁定計數項目（可選）<select id="meLink"></select></label>
+      <label id="meTargetWrap">每日目標<input id="meTarget" type="number" min="1" step="1" inputmode="numeric" placeholder="例如：8"></label>
+    </div>
     <div class="row">
       <button class="btn danger" id="meDel">刪除</button>
       <button class="btn" id="meCancel">取消</button>
@@ -492,7 +524,7 @@ body::after{opacity:.22}
   }
   var bk=document.getElementById("bkModal"),bkText=document.getElementById("bkText"),bkMsg=document.getElementById("bkMsg");
   document.getElementById("bkBtn").addEventListener("click",function(){
-    bkText.value=JSON.stringify({v:1,items:items,logs:logs,me:me});
+    bkText.value=JSON.stringify({v:1,items:items,logs:logs,me:me,profile:profile});
     bkMsg.textContent="複製下面嘅文字，去另一部裝置貼入來，再按「還原」。";
     bk.classList.add("open");
   });
@@ -509,6 +541,7 @@ body::after{opacity:.22}
     if(!confirm("還原會覆蓋呢部裝置而家嘅所有資料，確定？"))return;
     items=d.items;logs=d.logs;
     if(d.me){me=d.me;saveMe();}
+    if(d.profile){profile=d.profile;saveProfile();}
     items.forEach(function(it){if(!it.id)it.id=uid();});
     save();saveLogs();render();renderLog();sleepInfo();bk.classList.remove("open");
   });
@@ -517,28 +550,98 @@ body::after{opacity:.22}
   function saveMe(){try{localStorage.setItem(MKEY,JSON.stringify(me));}catch(e){warn();}}
   var meList=document.getElementById("meList"),meModal=document.getElementById("meModal"),meText=document.getElementById("meText"),meDel=document.getElementById("meDel");
   var meSegs=document.querySelectorAll(".segb");
-  function setType(t){meType=t;meSegs.forEach(function(s){s.setAttribute("aria-pressed",s.getAttribute("data-type")===t);});}
+  function setType(t){meType=t;meSegs.forEach(function(s){s.setAttribute("aria-pressed",s.getAttribute("data-type")===t);});var lw=document.getElementById("meLinkWrap");if(lw)lw.style.display=t==="goal"?"":"none";}
   meSegs.forEach(function(s){s.addEventListener("click",function(){setType(s.getAttribute("data-type"));});});
+  var PKEY="counter-profile-v1",profile={nick:"",motto:""};
+  try{var pr=localStorage.getItem(PKEY);if(pr){var pp=JSON.parse(pr);if(pp&&typeof pp==="object")profile={nick:String(pp.nick||"").slice(0,12),motto:String(pp.motto||"").slice(0,40)};}}catch(e){}
+  function saveProfile(){try{localStorage.setItem(PKEY,JSON.stringify(profile));}catch(e){warn();}}
+  function calcStreak(){
+    var set={};logs.forEach(function(l){set[dkey(new Date(l.t))]=1;});
+    var cur=new Date();cur.setHours(12,0,0,0);
+    if(!set[dkey(cur)])cur=new Date(cur.getTime()-864e5);
+    var n=0;while(set[dkey(cur)]){n++;cur=new Date(cur.getTime()-864e5);}
+    return {streak:n,days:Object.keys(set).length};
+  }
+  function todayTotal(){var k=dkey(new Date()),n=0;for(var i=0;i<logs.length;i++)if(dkey(new Date(logs[i].t))===k)n++;return n;}
+  function section(title,sub){var s=el("div","msec");s.appendChild(el("div","mtitle",title));s.appendChild(el("div","msub",sub));return s;}
+  function makePill(m,idx,n){
+    var f=m.linkId?itemOf(m.linkId):null,isGoal=m.type==="goal";
+    var p=el("button","pill");
+    p.style.setProperty("--h",f?hueAt(f.i,items.length):hueAt(idx,n));
+    p.appendChild(el("span","ptag",isGoal?"目標":"身份"));
+    var main=el("span","pmain");main.appendChild(el("span","ptext",m.text));
+    var num=null;
+    if(isGoal&&f){
+      var cnt=todayCount(f.it.id),g=(typeof f.it.goal==="number"&&f.it.goal>0)?f.it.goal:0;
+      if(g){
+        var bar=el("span","pbar"),fill=el("i");fill.style.width=Math.min(100,Math.round(cnt/g*100))+"%";
+        bar.appendChild(fill);main.appendChild(bar);
+        num=el("span","pnum",(cnt>=g?"✓ ":"")+cnt+"/"+g);
+        if(cnt>=g)p.classList.add("done");
+      }else num=el("span","pnum","今日 "+cnt);
+    }
+    p.appendChild(main);if(num)p.appendChild(num);
+    p.addEventListener("click",function(){openMe(m);});
+    return p;
+  }
+  function addPill(type){
+    var a=el("button","pill add","+");a.setAttribute("aria-label",type==="goal"?"新增目標":"新增身份");
+    a.addEventListener("click",function(){openMe(null,type);});return a;
+  }
   function renderMe(){
     meList.innerHTML="";
-    meList.appendChild(el("div","meintro","寫低你想成為嘅身份，同想達到嘅目標。按一下可以編輯。"));
-    me.forEach(function(m,i){
-      var p=el("button","pill");
-      p.style.setProperty("--h",hueAt(i,me.length));
-      p.appendChild(el("span","ptag",m.type==="goal"?"目標":"身份"));
-      p.appendChild(el("span","ptext",m.text));
-      p.addEventListener("click",function(){openMe(m);});
-      meList.appendChild(p);
+    var st=calcStreak(),card=el("section","mhero");
+    card.setAttribute("role","button");card.tabIndex=0;
+    card.appendChild(el("div","mnick",profile.nick||"設定你嘅暱稱"));
+    card.appendChild(el("div","mmotto",profile.motto||"寫一句屬於你嘅格言"));
+    var stats=el("div","mstats");
+    [["連續",st.streak+" 天"],["今日",todayTotal()+" 次"],["累計",st.days+" 天"]].forEach(function(x){
+      var c=el("div","mstat");c.appendChild(el("b","",x[0]==="今日"?x[1]:x[1]));c.appendChild(el("span","",x[0]));stats.appendChild(c);
     });
-    var a=el("button","pill add","+");a.setAttribute("aria-label","新增");
-    a.addEventListener("click",function(){openMe(null);});
-    meList.appendChild(a);
+    card.appendChild(stats);
+    card.addEventListener("click",openProf);
+    card.addEventListener("keydown",function(e){if(e.key==="Enter")openProf();});
+    meList.appendChild(card);
+    var ids=me.filter(function(m){return m.type!=="goal";}),gs=me.filter(function(m){return m.type==="goal";});
+    meList.appendChild(section("我是誰","寫低你想成為嘅人。"));
+    ids.forEach(function(m,i){meList.appendChild(makePill(m,i,ids.length));});
+    meList.appendChild(addPill("identity"));
+    meList.appendChild(section("我要做到","目標可以綁定計數項目，進度會自動更新。"));
+    gs.forEach(function(m,i){meList.appendChild(makePill(m,i,gs.length));});
+    meList.appendChild(addPill("goal"));
   }
-  function openMe(m){
+  function openProf(){
+    document.getElementById("pNick").value=profile.nick||"";
+    document.getElementById("pMotto").value=profile.motto||"";
+    document.getElementById("profModal").classList.add("open");
+    setTimeout(function(){document.getElementById("pNick").focus();},30);
+  }
+  function closeProf(){document.getElementById("profModal").classList.remove("open");}
+  document.getElementById("pSave").addEventListener("click",function(){
+    profile={nick:document.getElementById("pNick").value.trim().slice(0,12),motto:document.getElementById("pMotto").value.trim().slice(0,40)};
+    saveProfile();closeProf();renderMe();
+  });
+  document.getElementById("pCancel").addEventListener("click",closeProf);
+  document.getElementById("profModal").addEventListener("click",function(e){if(e.target===this)closeProf();});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeProf();});
+  function syncTarget(){
+    var sel=document.getElementById("meLink"),tw=document.getElementById("meTargetWrap"),ti=document.getElementById("meTarget");
+    var f=sel.value?itemOf(sel.value):null;
+    tw.style.display=f?"":"none";
+    ti.value=(f&&typeof f.it.goal==="number")?f.it.goal:"";
+  }
+  document.getElementById("meLink").addEventListener("change",syncTarget);
+  function openMe(m,preset){
     meCur=m;
-    document.getElementById("meTitle").textContent=m?"編輯":"新增";
+    var t=m?(m.type==="goal"?"goal":"identity"):(preset||"identity");
+    document.getElementById("meTitle").textContent=m?"編輯":(t==="goal"?"新增目標":"新增身份");
     meText.value=m?m.text:"";
-    setType(m&&m.type==="goal"?"goal":"identity");
+    setType(t);
+    var sel=document.getElementById("meLink");sel.innerHTML="";
+    var o0=document.createElement("option");o0.value="";o0.textContent="不綁定";sel.appendChild(o0);
+    items.forEach(function(it){var o=document.createElement("option");o.value=it.id;o.textContent=it.name;sel.appendChild(o);});
+    sel.value=(m&&m.linkId&&itemOf(m.linkId))?m.linkId:"";
+    syncTarget();
     meDel.style.display=m?"":"none";
     meModal.classList.add("open");
     setTimeout(function(){meText.focus();},30);
@@ -547,8 +650,18 @@ body::after{opacity:.22}
   document.getElementById("meSave").addEventListener("click",function(){
     var t=meText.value.trim();
     if(!t){closeMe();return;}
-    if(meCur){meCur.text=t;meCur.type=meType;}
-    else me.push({id:uid(),text:t,type:meType,hue:HUES[me.length%HUES.length]});
+    var link=null;
+    if(meType==="goal"){
+      var v=document.getElementById("meLink").value,f=v?itemOf(v):null;
+      if(f){
+        link=v;
+        var tv=parseInt(document.getElementById("meTarget").value,10);
+        if(!isNaN(tv)&&tv>0)f.it.goal=tv;else delete f.it.goal;
+        save();render();
+      }
+    }
+    if(meCur){meCur.text=t;meCur.type=meType;meCur.linkId=link;}
+    else me.push({id:uid(),text:t,type:meType,linkId:link});
     saveMe();closeMe();renderMe();
   });
   document.getElementById("meCancel").addEventListener("click",closeMe);
@@ -591,10 +704,12 @@ body::after{opacity:.22}
       for(i=0;i<d.me.length;i++){
         var m=d.me[i];
         if(!m||typeof m.text!=="string")return null;
-        mes.push({id:(typeof m.id==="string"&&m.id)?m.id:uid(),text:m.text.slice(0,60),type:m.type==="goal"?"goal":"identity",hue:typeof m.hue==="number"?m.hue:HUES[mes.length%HUES.length]});
+        mes.push({id:(typeof m.id==="string"&&m.id)?m.id:uid(),text:m.text.slice(0,60),type:m.type==="goal"?"goal":"identity",linkId:(typeof m.linkId==="string"&&m.linkId)?m.linkId:null,hue:typeof m.hue==="number"?m.hue:HUES[mes.length%HUES.length]});
       }
     }
-    return {items:its,logs:lgs,me:Array.isArray(d.me)?mes:null};
+    var prof=null;
+    if(d.profile&&typeof d.profile==="object"){prof={nick:typeof d.profile.nick==="string"?d.profile.nick.slice(0,12):"",motto:typeof d.profile.motto==="string"?d.profile.motto.slice(0,40):""};}
+    return {items:its,logs:lgs,me:Array.isArray(d.me)?mes:null,profile:prof};
   }
   function lastOf(id){var b=null;logs.forEach(function(l){if(l.id===id&&(!b||l.t>b.t))b=l;});return b;}
   function hm(t){var d=new Date(t);return p2(d.getHours())+":"+p2(d.getMinutes());}
