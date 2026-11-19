@@ -224,6 +224,19 @@ body::after{opacity:.22}
 .tab[aria-selected="true"]{box-shadow:inset 0 1px 1px #fff,0 4px 12px rgba(140,115,240,.28)}
 .btn.primary,.segb[aria-pressed="true"]{background:var(--grad);box-shadow:0 5px 14px rgba(160,100,235,.3)}
 .sheet{background:linear-gradient(160deg,rgba(255,255,255,.64),rgba(255,255,255,.34))}
+/* ===== v5: 每格有自己嘅柔和色調（糖果淡色，玻璃通透） ===== */
+.tile,.pill{
+ background:linear-gradient(160deg,hsla(var(--h),85%,78%,.52),hsla(var(--h),80%,74%,.12) 58%,hsla(var(--h),85%,80%,.30));
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.62),inset 2px 3px 7px hsla(var(--h),90%,66%,.50),inset -3px -4px 8px hsla(calc(var(--h) + 50),90%,72%,.42),inset 0 1.5px 1px #fff,inset 0 0 20px rgba(255,255,255,.28),0 14px 30px hsla(var(--h),60%,55%,.24)}
+.tile.add,.pill.add{background:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,.07));box-shadow:var(--rim),var(--drop)}
+.count{background:linear-gradient(135deg,hsl(var(--h),72%,50%),hsl(calc(var(--h) + 40),78%,60%));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.count .of{-webkit-text-fill-color:rgba(42,46,92,.58);color:rgba(42,46,92,.58)}
+.ring{background:conic-gradient(hsl(var(--h),82%,60%) 0,hsl(calc(var(--h) + 35),86%,68%) var(--p),rgba(255,255,255,.5) 0)}
+.tile.done{box-shadow:inset 0 0 0 1px rgba(255,255,255,.65),inset 0 1.5px 1px #fff,inset 0 0 22px rgba(255,255,255,.3),0 0 0 1.5px hsla(var(--h),85%,62%,.78),0 0 28px hsla(var(--h),90%,65%,.55),0 14px 30px hsla(var(--h),60%,55%,.24)}
+.tile.done::after{background:hsl(var(--h),80%,56%);box-shadow:0 0 8px hsla(var(--h),90%,60%,.6)}
+.chip{background:hsla(var(--h),85%,78%,.55);border:1px solid rgba(255,255,255,.75)}
+.dot{background:hsl(var(--h),80%,62%);box-shadow:0 0 5px hsla(var(--h),90%,65%,.5)}
+.tile:focus-visible,.pill:focus-visible{outline-color:hsla(var(--h),85%,62%,.85)}
 </style>
 </head>
 <body>
@@ -296,6 +309,7 @@ body::after{opacity:.22}
   var warned=false;
   function warn(){if(warned)return;warned=true;var w=document.getElementById("saveWarn");if(w){w.hidden=false;w.onclick=function(){w.hidden=true;};}}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  function hueAt(i,n){var step=n>1?Math.min(28,135/(n-1)):0;return 205+i*step;}
   var lastDay=dkey(new Date());
   function checkDay(){if(dkey(new Date())!==lastDay){render();return true;}return false;}
   function todayCount(id){var k=dkey(new Date()),n=0;for(var i=0;i<logs.length;i++)if(logs[i].id===id&&dkey(new Date(logs[i].t))===k)n++;return n;}
@@ -324,7 +338,7 @@ body::after{opacity:.22}
     items.forEach(function(it,i){
       var b=document.createElement("button");
       b.className="tile";
-      b.style.setProperty("--h",it.hue!=null?it.hue:HUES[i%HUES.length]);
+      b.style.setProperty("--h",hueAt(i,items.length));
       var n=document.createElement("div");n.className="name";n.textContent=it.name;
       var c=document.createElement("div");c.className="count";c.textContent=todayCount(it.id);
       var goal=(typeof it.goal==="number"&&it.goal>0)?it.goal:0,ring=null;
@@ -426,7 +440,7 @@ body::after{opacity:.22}
     return base;
   }
   function itemOf(id){for(var i=0;i<items.length;i++)if(items[i].id===id)return {it:items[i],i:i};return null;}
-  function hueOf(id){if(id==="sys-sleep")return 255;if(id==="sys-wake")return 40;var f=itemOf(id);if(!f)return 215;return f.it.hue!=null?f.it.hue:HUES[f.i%HUES.length];}
+  function hueOf(id){if(id==="sys-sleep")return 255;if(id==="sys-wake")return 335;var f=itemOf(id);if(!f)return 215;return hueAt(f.i,items.length);}
   function nameOf(l){if(l.id==="sys-sleep")return "上床睡覺";if(l.id==="sys-wake")return "起身落床";var f=itemOf(l.id);return f?f.it.name:l.name;}
   function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
   function renderLog(){
@@ -510,7 +524,7 @@ body::after{opacity:.22}
     meList.appendChild(el("div","meintro","寫低你想成為嘅身份，同想達到嘅目標。按一下可以編輯。"));
     me.forEach(function(m,i){
       var p=el("button","pill");
-      p.style.setProperty("--h",m.hue!=null?m.hue:HUES[i%HUES.length]);
+      p.style.setProperty("--h",hueAt(i,me.length));
       p.appendChild(el("span","ptag",m.type==="goal"?"目標":"身份"));
       p.appendChild(el("span","ptext",m.text));
       p.addEventListener("click",function(){openMe(m);});
