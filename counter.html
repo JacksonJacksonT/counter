@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-HK" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -109,6 +109,121 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sright{font-size:13px;font-weight:500;color:var(--mute);white-space:nowrap}
 .sbtn:focus-visible{outline:3px solid #5aa0ff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.tile,.count.bump{transition:none;animation:none}}
+/* ===== Liquid Glass v2: 磨砂暈染背景 + 通透液態玻璃 ===== */
+:root{--ink:#2a2e57;--mute:rgba(42,46,87,.56);--blob1:#8fa6ff;--blob2:#ff9fcf;--blob3:#c3a8ff;
+ --rim:inset 0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 8px rgba(120,165,255,.38),inset -3px -4px 9px rgba(255,140,200,.34),inset 0 1.5px 1px rgba(255,255,255,.95);
+ --drop:0 14px 32px rgba(110,100,190,.18);--grad:linear-gradient(135deg,#6f8cff,#c46fe0)}
+body{background:
+ radial-gradient(60% 38% at 12% 8%,rgba(125,155,255,.60),transparent 72%),
+ radial-gradient(55% 38% at 92% 42%,rgba(255,150,205,.52),transparent 72%),
+ radial-gradient(70% 40% at 30% 100%,rgba(190,160,255,.50),transparent 72%),
+ linear-gradient(150deg,#e1e7ff 0%,#efe7ff 48%,#fce6f2 100%);background-attachment:fixed}
+.blob{filter:blur(80px);opacity:.55}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.28;mix-blend-mode:soft-light;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+h1{font-weight:700;letter-spacing:.5px}
+
+.tile,.pill,.day,.streak,.tabbar,.sbtn{
+ background:linear-gradient(160deg,rgba(255,255,255,.36),rgba(255,255,255,.07) 55%,rgba(255,255,255,.18));
+ -webkit-backdrop-filter:blur(12px) saturate(170%);backdrop-filter:blur(12px) saturate(170%);
+ border:1px solid rgba(255,255,255,.45);box-shadow:var(--rim),var(--drop)}
+.tile{border-radius:30px}
+.tile::before{left:8%;right:34%;top:5px;height:26%;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,0))}
+.tile.add,.pill.add{background:linear-gradient(160deg,rgba(255,255,255,.28),rgba(255,255,255,.05));color:var(--mute)}
+.tile:focus-visible,.pill:focus-visible{outline:3px solid rgba(130,150,255,.85);outline-offset:3px}
+.count{font-weight:600}
+.name{font-weight:500}
+
+.ring{background:conic-gradient(#7c9cff 0,#c27cf0 calc(var(--p)*.6),#ff8fbf var(--p),rgba(255,255,255,.4) 0)}
+.tile.done{box-shadow:var(--rim),0 0 0 1.5px rgba(160,140,255,.7),0 0 32px rgba(175,140,255,.5),var(--drop)}
+.tile.done::after{background:var(--grad)}
+
+.ptag{background:rgba(255,255,255,.5);color:var(--ink)}
+.pill{--h:210}
+.day{border-radius:28px}
+.chip{background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.6);color:var(--ink)}
+.dot{background:var(--grad)}
+.streak{background:linear-gradient(135deg,rgba(150,170,255,.30),rgba(255,160,210,.24));}
+.entry,.day .entry{border-top-color:rgba(255,255,255,.55)}
+
+.tabbar{background:linear-gradient(160deg,rgba(255,255,255,.42),rgba(255,255,255,.14));-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
+.tab[aria-selected="true"]{background:linear-gradient(160deg,rgba(255,255,255,.85),rgba(255,255,255,.5));box-shadow:inset 0 1px 1px #fff,0 4px 12px rgba(110,100,190,.18)}
+
+.sheet{background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.28));-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,.6);box-shadow:var(--rim),0 24px 60px rgba(90,80,170,.28)}
+.modal{background:rgba(120,120,200,.18)}
+.sheet input,.sheet textarea{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7)}
+.btn{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);color:var(--ink)}
+.btn.primary,.segb[aria-pressed="true"]{background:var(--grad);color:#fff;border-color:rgba(255,255,255,.5)}
+.btn.danger{color:#c2417a}
+/* ===== v3: 更鮮艷、更光亮 ===== */
+:root{--ink:#26295c;--mute:rgba(38,41,92,.6);
+ --rim:inset 0 0 0 1px rgba(255,255,255,.7),inset 2px 3px 7px rgba(70,175,255,.62),inset -3px -4px 8px rgba(255,95,190,.55),inset 0 2px 1px #fff,inset 0 0 24px rgba(255,255,255,.38);
+ --drop:0 14px 34px rgba(120,105,255,.30);
+ --grad:linear-gradient(135deg,#4f8bff,#b45cf0 55%,#ff6fb5)}
+body{background:
+ radial-gradient(62% 40% at 10% 6%,rgba(90,135,255,.85),transparent 72%),
+ radial-gradient(58% 40% at 94% 40%,rgba(255,110,190,.75),transparent 72%),
+ radial-gradient(70% 42% at 28% 100%,rgba(175,120,255,.70),transparent 72%),
+ radial-gradient(40% 25% at 70% 8%,rgba(90,215,255,.55),transparent 72%),
+ linear-gradient(150deg,#cfdcff 0%,#ead9ff 48%,#ffd5eb 100%);background-attachment:fixed}
+.blob{opacity:.8;filter:blur(70px) saturate(140%)}
+body::after{opacity:.18}
+
+.tile,.pill,.day,.streak,.tabbar,.sbtn{
+ background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.10) 55%,rgba(255,255,255,.28));
+ -webkit-backdrop-filter:blur(10px) saturate(230%) brightness(1.12);backdrop-filter:blur(10px) saturate(230%) brightness(1.12);
+ border:1px solid rgba(255,255,255,.7);box-shadow:var(--rim),var(--drop)}
+.tile::before{left:8%;right:30%;top:5px;height:28%;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,0))}
+.tile.add,.pill.add{background:linear-gradient(160deg,rgba(255,255,255,.42),rgba(255,255,255,.10))}
+
+.count{background:linear-gradient(135deg,#3f7bff,#a24cf0 55%,#ff4fa6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.count .of{-webkit-text-fill-color:rgba(38,41,92,.6);color:rgba(38,41,92,.6)}
+.name{color:var(--mute)}
+
+.ring{background:conic-gradient(#38b6ff 0,#8a6bff calc(var(--p)*.55),#ff4fa8 var(--p),rgba(255,255,255,.55) 0)}
+.tile.done{box-shadow:var(--rim),0 0 0 2px rgba(190,130,255,.85),0 0 38px rgba(190,120,255,.7),0 0 70px rgba(255,120,190,.35),var(--drop)}
+.tile.done::after{background:var(--grad);box-shadow:0 0 12px rgba(200,110,255,.7)}
+
+.streak{background:linear-gradient(135deg,rgba(90,150,255,.42),rgba(255,120,190,.36))}
+.chip{background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.85)}
+.dot{background:var(--grad);box-shadow:0 0 8px rgba(180,100,240,.5)}
+.tab[aria-selected="true"]{background:linear-gradient(160deg,#fff,rgba(255,255,255,.65));box-shadow:inset 0 1px 1px #fff,0 4px 14px rgba(140,110,255,.35)}
+.btn.primary,.segb[aria-pressed="true"]{background:var(--grad);box-shadow:0 6px 16px rgba(160,90,240,.4)}
+.sheet{background:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.38))}
+/* ===== v4: 收返唔鮮艷，保留光亮 ===== */
+:root{--ink:#2a2e5c;--mute:rgba(42,46,92,.58);
+ --rim:inset 0 0 0 1px rgba(255,255,255,.62),inset 2px 3px 7px rgba(110,170,255,.44),inset -3px -4px 8px rgba(255,125,195,.4),inset 0 1.5px 1px #fff,inset 0 0 20px rgba(255,255,255,.3);
+ --drop:0 14px 32px rgba(115,105,205,.2);
+ --grad:linear-gradient(135deg,#6f90ff,#b67af0 55%,#ff8dc2)}
+body{background:
+ radial-gradient(62% 40% at 10% 6%,rgba(115,150,255,.66),transparent 72%),
+ radial-gradient(58% 40% at 94% 40%,rgba(255,135,200,.58),transparent 72%),
+ radial-gradient(70% 42% at 28% 100%,rgba(185,145,255,.55),transparent 72%),
+ radial-gradient(40% 25% at 70% 8%,rgba(125,215,255,.36),transparent 72%),
+ linear-gradient(150deg,#dae4ff 0%,#eee0ff 48%,#fddeee 100%);background-attachment:fixed}
+.blob{opacity:.62;filter:blur(75px) saturate(112%)}
+body::after{opacity:.22}
+
+.tile,.pill,.day,.streak,.tabbar,.sbtn{
+ background:linear-gradient(160deg,rgba(255,255,255,.46),rgba(255,255,255,.09) 55%,rgba(255,255,255,.22));
+ -webkit-backdrop-filter:blur(11px) saturate(190%) brightness(1.08);backdrop-filter:blur(11px) saturate(190%) brightness(1.08);
+ border:1px solid rgba(255,255,255,.6);box-shadow:var(--rim),var(--drop)}
+.tile::before{background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0))}
+.tile.add,.pill.add{background:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,.07))}
+
+.count{background:linear-gradient(135deg,#5f82ff,#a872ec 55%,#ef76b4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.count .of{-webkit-text-fill-color:rgba(42,46,92,.58);color:rgba(42,46,92,.58)}
+
+.ring{background:conic-gradient(#62b8ff 0,#9c82f6 calc(var(--p)*.55),#f580ba var(--p),rgba(255,255,255,.5) 0)}
+.tile.done{box-shadow:var(--rim),0 0 0 1.5px rgba(180,145,255,.72),0 0 28px rgba(185,135,255,.5),var(--drop)}
+.tile.done::after{background:var(--grad);box-shadow:0 0 8px rgba(190,120,245,.5)}
+
+.streak{background:linear-gradient(135deg,rgba(120,160,255,.32),rgba(255,150,205,.28))}
+.chip{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.75)}
+.dot{background:var(--grad);box-shadow:0 0 5px rgba(180,110,240,.35)}
+.tab[aria-selected="true"]{box-shadow:inset 0 1px 1px #fff,0 4px 12px rgba(140,115,240,.28)}
+.btn.primary,.segb[aria-pressed="true"]{background:var(--grad);box-shadow:0 5px 14px rgba(160,100,235,.3)}
+.sheet{background:linear-gradient(160deg,rgba(255,255,255,.64),rgba(255,255,255,.34))}
 </style>
 </head>
 <body>
