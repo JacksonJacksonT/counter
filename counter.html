@@ -305,6 +305,24 @@ body::after{opacity:.22}
 .hint:empty{display:none}
 .mhero{padding:18px 18px 16px}
 .mmotto{margin-bottom:0}
+/* ===== 記錄頁：每日短文 ===== */
+.jcard{position:relative;display:block;width:100%;text-align:left;border-radius:24px;padding:16px 18px;margin-bottom:12px;background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.7);-webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);color:var(--ink);font:inherit}
+.jdate{font-size:14px;font-weight:700;margin-bottom:8px}
+.jta{display:block;width:100%;border:0;outline:0;resize:none;background:transparent;font:inherit;font-size:16px;line-height:1.6;color:var(--ink);padding:0;min-height:110px}
+.jta::placeholder{color:var(--mute)}
+.jcount{text-align:right;font-size:12px;color:var(--mute)}
+.jsec{font-size:13px;color:var(--mute);margin:22px 6px 10px}
+.jitem{cursor:pointer}
+.jtext{font-size:15px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word}
+.backbar{display:flex;align-items:center;gap:12px;padding:14px 16px 0;max-width:760px;margin:0 auto}
+.bartitle{font-weight:700;font-size:17px}
+.btn.small{padding:6px 12px;font-size:13px}
+#jModalText{height:170px}
+.jitem{display:flex;align-items:center;gap:14px;padding:11px 16px;margin-bottom:8px;border-radius:18px}
+.jd{flex:none;display:flex;flex-direction:column;align-items:center;min-width:40px;font-size:15px;font-weight:700;line-height:1.2}
+.jd small{font-size:11px;font-weight:500;color:var(--mute)}
+.jitem .jtext{flex:1;min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;line-height:1.4}
+.jsec{margin:18px 6px 8px}
 </style>
 </head>
 <body>
@@ -313,17 +331,19 @@ body::after{opacity:.22}
 <header class="topbar"><button class="menubtn" id="menuBtn" aria-label="更多" aria-haspopup="true">⋯</button></header>
 <div class="menu" id="menu" hidden>
   <button class="mrow" id="sleepToggle"><span id="sleepLabel">🌙 睡覺</span><small id="sleepInfo"></small></button>
+  <button class="mrow" id="logBtn"><span>行為記錄</span><small>每日各項次數</small></button>
   <button class="mrow" id="bkBtn">備份 / 還原</button>
 </div>
 <div id="viewCount">
 <main><div class="grid" id="grid"></div></main>
 <div class="hint" id="hint"></div>
 </div>
-<div id="viewLog" hidden><main id="logList"></main></div>
+<div id="viewLog" hidden><div class="backbar"><button class="btn small" id="logBack">‹ 返回</button><span class="bartitle">行為記錄</span></div><main id="logList"></main></div>
+<div id="viewJournal" hidden><main id="jList"></main></div>
 <div id="viewMe" hidden><main id="meList"></main></div>
 <div class="tabwrap"><nav class="tabbar" role="tablist">
 <button class="tab" role="tab" data-tab="count" aria-selected="true">計數</button>
-<button class="tab" role="tab" data-tab="log" aria-selected="false">記錄</button>
+<button class="tab" role="tab" data-tab="journal" aria-selected="false">記錄</button>
 <button class="tab" role="tab" data-tab="me" aria-selected="false">我</button>
 </nav></div>
 
@@ -364,6 +384,14 @@ body::after{opacity:.22}
       <button class="btn" id="meCancel">取消</button>
       <button class="btn primary" id="meSave">儲存</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="jModal" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <h2 id="jModalTitle"></h2>
+    <textarea id="jModalText" maxlength="300" aria-label="記錄內容"></textarea>
+    <div class="row"><button class="btn danger" id="jDel">刪除</button><button class="btn" id="jCancel">取消</button><button class="btn primary" id="jSave">儲存</button></div>
   </div>
 </div>
 
@@ -577,7 +605,7 @@ body::after{opacity:.22}
   }
   var bk=document.getElementById("bkModal"),bkText=document.getElementById("bkText"),bkMsg=document.getElementById("bkMsg");
   document.getElementById("bkBtn").addEventListener("click",function(){
-    bkText.value=JSON.stringify({v:1,items:items,logs:logs,me:me,profile:profile});
+    bkText.value=JSON.stringify({v:1,items:items,logs:logs,me:me,profile:profile,journal:journal});
     bkMsg.textContent="複製下面嘅文字，去另一部裝置貼入來，再按「還原」。";
     bk.classList.add("open");
   });
@@ -595,6 +623,7 @@ body::after{opacity:.22}
     items=d.items;logs=d.logs;
     if(d.me){me=d.me;saveMe();}
     if(d.profile){profile=d.profile;saveProfile();}
+    if(d.journal){journal=d.journal;saveJournal();}
     items.forEach(function(it){if(!it.id)it.id=uid();});
     save();saveLogs();render();renderLog();sleepInfo();bk.classList.remove("open");
   });
@@ -738,20 +767,90 @@ body::after{opacity:.22}
   });
   meModal.addEventListener("click",function(e){if(e.target===meModal)closeMe();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&meModal.classList.contains("open"))closeMe();});
+  var JKEY="counter-journal-v1",journal={};
+  try{
+    var jr=localStorage.getItem(JKEY);
+    if(jr){var jp=JSON.parse(jr);if(jp&&typeof jp==="object"&&!Array.isArray(jp)){
+      Object.keys(jp).forEach(function(k){var v=jp[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")journal[k]={text:v.text.slice(0,300),t:typeof v.t==="number"?v.t:0};});
+    }}
+  }catch(e){}
+  function saveJournal(){try{localStorage.setItem(JKEY,JSON.stringify(journal));}catch(e){warn();}}
+  function setEntry(k,text){
+    text=String(text).slice(0,300);
+    if(text.trim())journal[k]={text:text,t:Date.now()};else delete journal[k];
+    saveJournal();
+  }
+  function flushJ(){var ta=document.querySelector("#jList .jta");if(ta)setEntry(ta.getAttribute("data-k"),ta.value);}
+  var jList=document.getElementById("jList"),jCur=null,jTimer=null;
+  function keyToDate(k){var p=k.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
+  function renderJournal(){
+    flushJ();
+    jList.innerHTML="";
+    var tk=dkey(new Date()),card=el("section","jcard jtoday");
+    card.appendChild(el("div","jdate",dlabel(new Date())));
+    var ta=document.createElement("textarea");
+    ta.className="jta";ta.maxLength=300;ta.rows=4;ta.setAttribute("data-k",tk);ta.setAttribute("aria-label","今日記錄");
+    ta.placeholder="今日發生咗乜？有咩想法？簡短寫幾句就得。";
+    ta.value=(journal[tk]&&journal[tk].text)||"";
+    var cnt=el("div","jcount",ta.value.length+" / 300");
+    ta.addEventListener("input",function(){
+      cnt.textContent=ta.value.length+" / 300";
+      clearTimeout(jTimer);jTimer=setTimeout(function(){setEntry(tk,ta.value);},400);
+    });
+    ta.addEventListener("blur",function(){clearTimeout(jTimer);setEntry(tk,ta.value);});
+    card.appendChild(ta);card.appendChild(cnt);jList.appendChild(card);
+    var keys=Object.keys(journal).filter(function(k){return k!==tk;}).sort().reverse();
+    if(keys.length)jList.appendChild(el("div","jsec","過往"));
+    keys.forEach(function(k){
+      var b=el("button","jcard jitem"),dd=keyToDate(k);
+      var jd=el("span","jd",(dd.getMonth()+1)+"/"+dd.getDate());
+      jd.appendChild(el("small","","週"+"日一二三四五六".charAt(dd.getDay())));
+      b.appendChild(jd);
+      b.appendChild(el("span","jtext",journal[k].text.replace(/\s+/g," ")));
+      b.addEventListener("click",function(){openJ(k);});
+      jList.appendChild(b);
+    });
+  }
+  function openJ(k){
+    jCur=k;
+    document.getElementById("jModalTitle").textContent=dlabel(keyToDate(k));
+    document.getElementById("jModalText").value=journal[k]?journal[k].text:"";
+    document.getElementById("jModal").classList.add("open");
+    setTimeout(function(){document.getElementById("jModalText").focus();},30);
+  }
+  function closeJ(){document.getElementById("jModal").classList.remove("open");jCur=null;}
+  document.getElementById("jSave").addEventListener("click",function(){
+    if(jCur)setEntry(jCur,document.getElementById("jModalText").value);
+    closeJ();renderJournal();
+  });
+  document.getElementById("jDel").addEventListener("click",function(){
+    if(!jCur)return;
+    if(!confirm("確定刪除呢日嘅記錄？"))return;
+    delete journal[jCur];saveJournal();closeJ();renderJournal();
+  });
+  document.getElementById("jCancel").addEventListener("click",closeJ);
+  document.getElementById("jModal").addEventListener("click",function(e){if(e.target===this)closeJ();});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeJ();});
+  window.addEventListener("pagehide",flushJ);
   var menu=document.getElementById("menu"),menuBtn=document.getElementById("menuBtn");
   menuBtn.addEventListener("click",function(e){e.stopPropagation();menu.hidden=!menu.hidden;});
   document.addEventListener("click",function(e){if(!menu.hidden&&!menu.contains(e.target))menu.hidden=true;});
   document.getElementById("bkBtn").addEventListener("click",function(){menu.hidden=true;});
   var tabs=document.querySelectorAll(".tab");
-  tabs.forEach(function(t){t.addEventListener("click",function(){
-    var tab=t.getAttribute("data-tab"),isLog=tab==="log",isMe=tab==="me";
-    tabs.forEach(function(o){o.setAttribute("aria-selected",o===t);});
-    document.getElementById("viewCount").hidden=(tab!=="count");
-    document.getElementById("viewLog").hidden=!isLog;
-    document.getElementById("viewMe").hidden=!isMe;
-    
-    if(isLog)renderLog();if(isMe)renderMe();window.scrollTo(0,0);
-  });});
+  var lastTab="count",VIEWS={count:"viewCount",journal:"viewJournal",me:"viewMe",log:"viewLog"};
+  function showView(name){
+    if(name!=="journal")flushJ();
+    Object.keys(VIEWS).forEach(function(k){document.getElementById(VIEWS[k]).hidden=(k!==name);});
+    tabs.forEach(function(o){o.setAttribute("aria-selected",o.getAttribute("data-tab")===name);});
+    if(name!=="log")lastTab=name;
+    if(name==="log")renderLog();
+    if(name==="me")renderMe();
+    if(name==="journal")renderJournal();
+    window.scrollTo(0,0);
+  }
+  tabs.forEach(function(t){t.addEventListener("click",function(){showView(t.getAttribute("data-tab"));});});
+  document.getElementById("logBtn").addEventListener("click",function(){menu.hidden=true;showView("log");});
+  document.getElementById("logBack").addEventListener("click",function(){showView(lastTab);});
   function cleanBackup(d){
     if(!d||!Array.isArray(d.items)||!Array.isArray(d.logs))return null;
     var its=[],lgs=[],i;
@@ -778,7 +877,12 @@ body::after{opacity:.22}
     }
     var prof=null;
     if(d.profile&&typeof d.profile==="object"){prof={nick:typeof d.profile.nick==="string"?d.profile.nick.slice(0,12):"",motto:typeof d.profile.motto==="string"?d.profile.motto.slice(0,40):""};}
-    return {items:its,logs:lgs,me:Array.isArray(d.me)?mes:null,profile:prof};
+    var jn=null;
+    if(d.journal&&typeof d.journal==="object"&&!Array.isArray(d.journal)){
+      jn={};
+      Object.keys(d.journal).forEach(function(k){var v=d.journal[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")jn[k]={text:v.text.slice(0,300),t:typeof v.t==="number"?v.t:0};});
+    }
+    return {journal:jn,items:its,logs:lgs,me:Array.isArray(d.me)?mes:null,profile:prof};
   }
   function lastOf(id){var b=null;logs.forEach(function(l){if(l.id===id&&(!b||l.t>b.t))b=l;});return b;}
   function hm(t){var d=new Date(t);return p2(d.getHours())+":"+p2(d.getMinutes());}
@@ -798,7 +902,7 @@ body::after{opacity:.22}
   function msToMidnight(){var n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate()+1).getTime()-n.getTime()+500;}
   function schedule(){setTimeout(function(){render();schedule();},msToMidnight());}
   schedule();
-  document.addEventListener("visibilitychange",function(){if(!document.hidden)render();});
+  document.addEventListener("visibilitychange",function(){if(!document.hidden){render();if(!document.getElementById("viewJournal").hidden)renderJournal();}});
   render();
 })();
 </script>
