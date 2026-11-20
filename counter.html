@@ -256,6 +256,27 @@ body::after{opacity:.22}
 .pill.done{box-shadow:inset 0 0 0 1px rgba(255,255,255,.65),inset 0 1.5px 1px #fff,inset 0 0 22px rgba(255,255,255,.3),0 0 0 1.5px hsla(var(--h),85%,62%,.75),0 0 26px hsla(var(--h),90%,65%,.5),0 14px 30px hsla(var(--h),60%,55%,.24)}
 .sheet select{font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.5);color:var(--ink);outline:none}
 #meLinkWrap{display:flex;flex-direction:column;gap:12px}
+/* ===== 我頁 v3：身份 → 目標 → 行動 ===== */
+.seg{display:none}
+.icard{display:block;border-radius:30px;padding:0;cursor:default;min-height:0}
+.icard:active{transform:none}
+.ihead{display:flex;align-items:center;gap:12px;padding:14px 16px 14px 22px;cursor:pointer;min-height:68px;border-radius:30px}
+.ihead:focus-visible{outline:3px solid hsla(var(--h),85%,62%,.85);outline-offset:-3px}
+.iedit{border:0;background:rgba(255,255,255,.5);color:var(--ink);width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;flex:none}
+.ichev{flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+.ihead[aria-expanded="true"] .chev{transform:rotate(-135deg) translate(-1px,-1px)}
+.ibody{padding:0 14px 6px}
+.ibody .pill{margin-bottom:10px;min-height:60px;padding:10px 20px}
+.ibody .pill.add{min-height:48px;font-size:26px}
+.gpill .ptext{font-size:15px}
+.achips{display:flex;flex-wrap:wrap;gap:5px}
+.achip{--h:210;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:hsla(var(--h),85%,78%,.55);border:1px solid rgba(255,255,255,.75);white-space:nowrap}
+.actlist{display:flex;flex-direction:column;gap:8px;max-height:210px;overflow:auto}
+.actlabel{font-size:13px;color:var(--mute)}
+.sheet label.actrow{flex-direction:row;align-items:center;gap:10px;font-size:15px;color:var(--ink)}
+.actrow input[type=checkbox]{width:20px;height:20px;padding:0;flex:none}
+.actname{flex:1;min-width:0}
+.sheet .acttar{width:92px;flex:none;padding:8px 10px;font-size:14px}
 </style>
 </head>
 <body>
@@ -305,8 +326,9 @@ body::after{opacity:.22}
     <div class="seg"><button type="button" class="btn segb" data-type="identity" aria-pressed="true">身份</button><button type="button" class="btn segb" data-type="goal" aria-pressed="false">目標</button></div>
     <label>內容<textarea id="meText" maxlength="60" placeholder="例如：一個自律嘅人、今年跑完半馬"></textarea></label>
     <div id="meLinkWrap">
-      <label>綁定計數項目（可選）<select id="meLink"></select></label>
-      <label id="meTargetWrap">每日目標<input id="meTarget" type="number" min="1" step="1" inputmode="numeric" placeholder="例如：8"></label>
+      <label>所屬身份<select id="mePar"></select></label>
+      <div class="actlabel">綁定行動（可多選，可設每日目標）</div>
+      <div class="actlist" id="actList"></div>
     </div>
     <div class="row">
       <button class="btn danger" id="meDel">刪除</button>
@@ -548,6 +570,7 @@ body::after{opacity:.22}
   var MKEY="counter-me-v1",me=[],meCur=null,meType="identity";
   try{var mr=localStorage.getItem(MKEY);if(mr){var mp=JSON.parse(mr);if(Array.isArray(mp))me=mp.filter(function(x){return x&&typeof x.text==="string";});}}catch(e){}
   function saveMe(){try{localStorage.setItem(MKEY,JSON.stringify(me));}catch(e){warn();}}
+  me.forEach(function(m){if(m.type==="goal"){if(!Array.isArray(m.links))m.links=m.linkId?[m.linkId]:[];if(typeof m.parentId!=="string")m.parentId=null;}});
   var meList=document.getElementById("meList"),meModal=document.getElementById("meModal"),meText=document.getElementById("meText"),meDel=document.getElementById("meDel");
   var meSegs=document.querySelectorAll(".segb");
   function setType(t){meType=t;meSegs.forEach(function(s){s.setAttribute("aria-pressed",s.getAttribute("data-type")===t);});var lw=document.getElementById("meLinkWrap");if(lw)lw.style.display=t==="goal"?"":"none";}
@@ -564,29 +587,63 @@ body::after{opacity:.22}
   }
   function todayTotal(){var k=dkey(new Date()),n=0;for(var i=0;i<logs.length;i++)if(dkey(new Date(logs[i].t))===k)n++;return n;}
   function section(title,sub){var s=el("div","msec");s.appendChild(el("div","mtitle",title));s.appendChild(el("div","msub",sub));return s;}
-  function makePill(m,idx,n){
-    var f=m.linkId?itemOf(m.linkId):null,isGoal=m.type==="goal";
-    var p=el("button","pill");
-    p.style.setProperty("--h",f?hueAt(f.i,items.length):hueAt(idx,n));
-    p.appendChild(el("span","ptag",isGoal?"目標":"身份"));
-    var main=el("span","pmain");main.appendChild(el("span","ptext",m.text));
-    var num=null;
-    if(isGoal&&f){
-      var cnt=todayCount(f.it.id),g=(typeof f.it.goal==="number"&&f.it.goal>0)?f.it.goal:0;
-      if(g){
-        var bar=el("span","pbar"),fill=el("i");fill.style.width=Math.min(100,Math.round(cnt/g*100))+"%";
-        bar.appendChild(fill);main.appendChild(bar);
-        num=el("span","pnum",(cnt>=g?"✓ ":"")+cnt+"/"+g);
-        if(cnt>=g)p.classList.add("done");
-      }else num=el("span","pnum","今日 "+cnt);
-    }
-    p.appendChild(main);if(num)p.appendChild(num);
-    p.addEventListener("click",function(){openMe(m);});
+  var OKEY="counter-me-open-v1",openIds={};
+  try{var orw=localStorage.getItem(OKEY);if(orw){var oo=JSON.parse(orw);if(oo&&typeof oo==="object")openIds=oo;}}catch(e){}
+  function saveOpen(){try{localStorage.setItem(OKEY,JSON.stringify(openIds));}catch(e){}}
+  function goalProg(g){
+    var acts=(g.links||[]).map(function(id){return itemOf(id);}).filter(Boolean),sumT=0,sumC=0,withT=0,tot=0;
+    acts.forEach(function(f){
+      var c=todayCount(f.it.id),t=(typeof f.it.goal==="number"&&f.it.goal>0)?f.it.goal:0;
+      tot+=c;if(t){withT++;sumT+=t;sumC+=Math.min(c,t);}
+    });
+    return {acts:acts,withT:withT,tot:tot,pct:sumT?Math.round(sumC/sumT*100):null};
+  }
+  function goalPill(g,hue){
+    var pg=goalProg(g),p=el("button","pill gpill");
+    p.style.setProperty("--h",hue);
+    var main=el("span","pmain");main.appendChild(el("span","ptext",g.text));
+    if(pg.pct!==null){var bar=el("span","pbar"),fill=el("i");fill.style.width=Math.min(100,pg.pct)+"%";bar.appendChild(fill);main.appendChild(bar);}
+    if(pg.acts.length){
+      var chips=el("span","achips");
+      pg.acts.forEach(function(f){
+        var c=todayCount(f.it.id),t=(typeof f.it.goal==="number"&&f.it.goal>0)?f.it.goal:0;
+        var ch=el("span","achip",f.it.name+" "+c+(t?"/"+t:""));
+        ch.style.setProperty("--h",hueAt(f.i,items.length));chips.appendChild(ch);
+      });
+      main.appendChild(chips);
+    }else main.appendChild(el("span","msub","按一下綁定行動"));
+    p.appendChild(el("span","ptag","目標"));
+    p.appendChild(main);
+    if(pg.pct!==null){p.appendChild(el("span","pnum",(pg.pct>=100?"✓ ":"")+pg.pct+"%"));if(pg.pct>=100)p.classList.add("done");}
+    else if(pg.acts.length)p.appendChild(el("span","pnum","今日 "+pg.tot));
+    p.addEventListener("click",function(){openMe(g);});
     return p;
   }
-  function addPill(type){
-    var a=el("button","pill add","+");a.setAttribute("aria-label",type==="goal"?"新增目標":"新增身份");
-    a.addEventListener("click",function(){openMe(null,type);});return a;
+  function addPill(type,parentId,label){
+    var a=el("button","pill add","+");a.setAttribute("aria-label",label);
+    a.addEventListener("click",function(){openMe(null,type,parentId);});
+    return a;
+  }
+  function identityCard(m,i,n){
+    var kids=me.filter(function(x){return x.type==="goal"&&x.parentId===m.id;}),open=!!openIds[m.id];
+    var hue=hueAt(i,n),card=el("section","pill icard");card.style.setProperty("--h",hue);
+    var head=el("div","ihead");head.setAttribute("role","button");head.tabIndex=0;head.setAttribute("aria-expanded",open?"true":"false");
+    head.appendChild(el("span","ptag","身份"));
+    var t=el("span","pmain");t.appendChild(el("span","ptext",m.text));
+    t.appendChild(el("span","msub",kids.length?kids.length+" 個目標":"仲未有目標，展開加一個"));
+    head.appendChild(t);
+    var ed=el("button","iedit","✎");ed.setAttribute("aria-label","編輯身份");
+    ed.addEventListener("click",function(e){e.stopPropagation();openMe(m);});
+    head.appendChild(ed);
+    var cw=el("span","ichev");cw.appendChild(el("span","chev"));head.appendChild(cw);
+    var body=el("div","ibody");body.hidden=!open;
+    kids.forEach(function(g,j){body.appendChild(goalPill(g,(hue+14*(j+1))%360));});
+    body.appendChild(addPill("goal",m.id,"新增目標"));
+    function toggle(){openIds[m.id]=!openIds[m.id];body.hidden=!openIds[m.id];head.setAttribute("aria-expanded",openIds[m.id]?"true":"false");saveOpen();}
+    head.addEventListener("click",toggle);
+    head.addEventListener("keydown",function(e){if(e.key==="Enter")toggle();});
+    card.appendChild(head);card.appendChild(body);
+    return card;
   }
   function renderMe(){
     meList.innerHTML="";
@@ -596,19 +653,22 @@ body::after{opacity:.22}
     card.appendChild(el("div","mmotto",profile.motto||"寫一句屬於你嘅格言"));
     var stats=el("div","mstats");
     [["連續",st.streak+" 天"],["今日",todayTotal()+" 次"],["累計",st.days+" 天"]].forEach(function(x){
-      var c=el("div","mstat");c.appendChild(el("b","",x[0]==="今日"?x[1]:x[1]));c.appendChild(el("span","",x[0]));stats.appendChild(c);
+      var c=el("div","mstat");c.appendChild(el("b","",x[1]));c.appendChild(el("span","",x[0]));stats.appendChild(c);
     });
     card.appendChild(stats);
     card.addEventListener("click",openProf);
     card.addEventListener("keydown",function(e){if(e.key==="Enter")openProf();});
     meList.appendChild(card);
-    var ids=me.filter(function(m){return m.type!=="goal";}),gs=me.filter(function(m){return m.type==="goal";});
-    meList.appendChild(section("我是誰","寫低你想成為嘅人。"));
-    ids.forEach(function(m,i){meList.appendChild(makePill(m,i,ids.length));});
-    meList.appendChild(addPill("identity"));
-    meList.appendChild(section("我要做到","目標可以綁定計數項目，進度會自動更新。"));
-    gs.forEach(function(m,i){meList.appendChild(makePill(m,i,gs.length));});
-    meList.appendChild(addPill("goal"));
+    var ids=me.filter(function(m){return m.type!=="goal";});
+    var orphans=me.filter(function(m){return m.type==="goal"&&!ids.some(function(x){return x.id===m.parentId;});});
+    meList.appendChild(section("我是誰","每個身份底下有目標，目標再綁定你每日做嘅行動。"));
+    if(!ids.length)meList.appendChild(el("div","meintro","先寫低一個你想成為嘅人，再喺佢下面加目標。"));
+    ids.forEach(function(m,i){meList.appendChild(identityCard(m,i,ids.length));});
+    meList.appendChild(addPill("identity",null,"新增身份"));
+    if(orphans.length){
+      meList.appendChild(section("未歸類目標","編輯目標，揀返所屬身份就會收入去。"));
+      orphans.forEach(function(g,j){meList.appendChild(goalPill(g,hueAt(j,orphans.length)));});
+    }
   }
   function openProf(){
     document.getElementById("pNick").value=profile.nick||"";
@@ -624,24 +684,32 @@ body::after{opacity:.22}
   document.getElementById("pCancel").addEventListener("click",closeProf);
   document.getElementById("profModal").addEventListener("click",function(e){if(e.target===this)closeProf();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeProf();});
-  function syncTarget(){
-    var sel=document.getElementById("meLink"),tw=document.getElementById("meTargetWrap"),ti=document.getElementById("meTarget");
-    var f=sel.value?itemOf(sel.value):null;
-    tw.style.display=f?"":"none";
-    ti.value=(f&&typeof f.it.goal==="number")?f.it.goal:"";
-  }
-  document.getElementById("meLink").addEventListener("change",syncTarget);
-  function openMe(m,preset){
+  function openMe(m,preset,parentId){
     meCur=m;
     var t=m?(m.type==="goal"?"goal":"identity"):(preset||"identity");
-    document.getElementById("meTitle").textContent=m?"編輯":(t==="goal"?"新增目標":"新增身份");
+    document.getElementById("meTitle").textContent=(m?"編輯":"新增")+(t==="goal"?"目標":"身份");
     meText.value=m?m.text:"";
     setType(t);
-    var sel=document.getElementById("meLink");sel.innerHTML="";
-    var o0=document.createElement("option");o0.value="";o0.textContent="不綁定";sel.appendChild(o0);
-    items.forEach(function(it){var o=document.createElement("option");o.value=it.id;o.textContent=it.name;sel.appendChild(o);});
-    sel.value=(m&&m.linkId&&itemOf(m.linkId))?m.linkId:"";
-    syncTarget();
+    if(t==="goal"){
+      var sel=document.getElementById("mePar");sel.innerHTML="";
+      var o0=document.createElement("option");o0.value="";o0.textContent="未歸類";sel.appendChild(o0);
+      me.filter(function(x){return x.type!=="goal";}).forEach(function(x){
+        var o=document.createElement("option");o.value=x.id;o.textContent=x.text;sel.appendChild(o);
+      });
+      sel.value=m?(m.parentId||""):(parentId||"");
+      var list=document.getElementById("actList");list.innerHTML="";
+      var cur=(m&&m.links)||[];
+      if(!items.length)list.appendChild(el("div","msub","未有計數項目，先去「計數」頁新增。"));
+      items.forEach(function(it){
+        var row=el("label","actrow"),cb=document.createElement("input");
+        cb.type="checkbox";cb.checked=cur.indexOf(it.id)>=0;cb.setAttribute("data-id",it.id);
+        var tar=document.createElement("input");
+        tar.type="number";tar.min="1";tar.step="1";tar.setAttribute("inputmode","numeric");tar.placeholder="每日目標";tar.className="acttar";
+        tar.value=(typeof it.goal==="number")?it.goal:"";
+        row.appendChild(cb);row.appendChild(el("span","actname",it.name));row.appendChild(tar);
+        list.appendChild(row);
+      });
+    }
     meDel.style.display=m?"":"none";
     meModal.classList.add("open");
     setTimeout(function(){meText.focus();},30);
@@ -650,25 +718,32 @@ body::after{opacity:.22}
   document.getElementById("meSave").addEventListener("click",function(){
     var t=meText.value.trim();
     if(!t){closeMe();return;}
-    var link=null;
+    var o;
+    if(meCur)o=meCur;else{o={id:uid(),text:t,type:meType};me.push(o);}
+    o.text=t;o.type=meType;
     if(meType==="goal"){
-      var v=document.getElementById("meLink").value,f=v?itemOf(v):null;
-      if(f){
-        link=v;
-        var tv=parseInt(document.getElementById("meTarget").value,10);
+      var links=[],changed=false;
+      document.querySelectorAll("#actList .actrow").forEach(function(row){
+        var cb=row.querySelector("input[type=checkbox]"),f=itemOf(cb.getAttribute("data-id"));
+        if(!cb.checked||!f)return;
+        links.push(f.it.id);
+        var tv=parseInt(row.querySelector(".acttar").value,10);
         if(!isNaN(tv)&&tv>0)f.it.goal=tv;else delete f.it.goal;
-        save();render();
-      }
+        changed=true;
+      });
+      o.links=links;o.parentId=document.getElementById("mePar").value||null;delete o.linkId;
+      if(o.parentId){openIds[o.parentId]=true;saveOpen();}
+      if(changed){save();render();}
     }
-    if(meCur){meCur.text=t;meCur.type=meType;meCur.linkId=link;}
-    else me.push({id:uid(),text:t,type:meType,linkId:link});
     saveMe();closeMe();renderMe();
   });
   document.getElementById("meCancel").addEventListener("click",closeMe);
   meDel.addEventListener("click",function(){
     if(!meCur)return;
-    if(!confirm("確定刪除？"))return;
+    var isId=meCur.type!=="goal",id=meCur.id;
+    if(!confirm(isId?"確定刪除？底下嘅目標會變成未歸類。":"確定刪除呢個目標？"))return;
     me=me.filter(function(x){return x!==meCur;});
+    if(isId)me.forEach(function(x){if(x.parentId===id)x.parentId=null;});
     saveMe();closeMe();renderMe();
   });
   meModal.addEventListener("click",function(e){if(e.target===meModal)closeMe();});
@@ -704,7 +779,7 @@ body::after{opacity:.22}
       for(i=0;i<d.me.length;i++){
         var m=d.me[i];
         if(!m||typeof m.text!=="string")return null;
-        mes.push({id:(typeof m.id==="string"&&m.id)?m.id:uid(),text:m.text.slice(0,60),type:m.type==="goal"?"goal":"identity",linkId:(typeof m.linkId==="string"&&m.linkId)?m.linkId:null,hue:typeof m.hue==="number"?m.hue:HUES[mes.length%HUES.length]});
+        mes.push({id:(typeof m.id==="string"&&m.id)?m.id:uid(),text:m.text.slice(0,60),type:m.type==="goal"?"goal":"identity",parentId:(typeof m.parentId==="string"&&m.parentId)?m.parentId:null,links:Array.isArray(m.links)?m.links.filter(function(x){return typeof x==="string";}):((typeof m.linkId==="string"&&m.linkId)?[m.linkId]:[]),hue:typeof m.hue==="number"?m.hue:HUES[mes.length%HUES.length]});
       }
     }
     var prof=null;
