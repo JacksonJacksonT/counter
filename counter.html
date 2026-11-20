@@ -332,6 +332,7 @@ body::after{opacity:.22}
 <div class="menu" id="menu" hidden>
   <button class="mrow" id="sleepToggle"><span id="sleepLabel">🌙 睡覺</span><small id="sleepInfo"></small></button>
   <button class="mrow" id="logBtn"><span>行為記錄</span><small>每日各項次數</small></button>
+  <button class="mrow" id="hapBtn"><span id="hapLabel">震動：開</span><small>按格子輕震，達標連震兩下</small></button>
   <button class="mrow" id="bkBtn">備份 / 還原</button>
 </div>
 <div id="viewCount">
@@ -490,6 +491,7 @@ body::after{opacity:.22}
         logs.push({t:Date.now(),id:it.id,name:it.name});saveLogs();
         if(!checkDay())paint();
         updateHint();
+        haptic(goal&&todayCount(it.id)===goal?2:1);
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -832,6 +834,29 @@ body::after{opacity:.22}
   document.getElementById("jModal").addEventListener("click",function(e){if(e.target===this)closeJ();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeJ();});
   window.addEventListener("pagehide",flushJ);
+  var HKEY="counter-haptic-v1",hapticOn=true,hsw=null,hlb=null;
+  try{hapticOn=localStorage.getItem(HKEY)!=="0";}catch(e){}
+  function hapticSetup(){
+    if(hsw)return;
+    hsw=document.createElement("input");hsw.type="checkbox";hsw.setAttribute("switch","");hsw.id="hsw";hsw.tabIndex=-1;hsw.setAttribute("aria-hidden","true");hsw.style.display="none";
+    hlb=document.createElement("label");hlb.htmlFor="hsw";hlb.style.display="none";hlb.setAttribute("aria-hidden","true");
+    document.body.appendChild(hsw);document.body.appendChild(hlb);
+  }
+  function haptic(n){
+    if(!hapticOn)return;
+    try{
+      if(navigator.vibrate){navigator.vibrate(n>1?[14,70,14]:14);return;}
+      hapticSetup();hlb.click();
+      if(n>1)setTimeout(function(){try{hlb.click();}catch(e){}},90);
+    }catch(e){}
+  }
+  function hapLabel(){document.getElementById("hapLabel").textContent="震動："+(hapticOn?"開":"關");}
+  document.getElementById("hapBtn").addEventListener("click",function(){
+    hapticOn=!hapticOn;
+    try{localStorage.setItem(HKEY,hapticOn?"1":"0");}catch(e){}
+    hapLabel();haptic(1);
+  });
+  hapLabel();
   var menu=document.getElementById("menu"),menuBtn=document.getElementById("menuBtn");
   menuBtn.addEventListener("click",function(e){e.stopPropagation();menu.hidden=!menu.hidden;});
   document.addEventListener("click",function(e){if(!menu.hidden&&!menu.contains(e.target))menu.hidden=true;});
