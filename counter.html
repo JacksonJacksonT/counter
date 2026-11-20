@@ -293,17 +293,31 @@ body::after{opacity:.22}
 .dtext{font-size:18px;font-weight:700;line-height:1.4;word-break:break-word}
 .dsum{font-size:13px;color:var(--mute);margin:8px 0 6px}
 .dpanel .pbar{margin-top:2px}
+/* ===== 精簡版：頂部只留「⋯」、低頻功能收入選單 ===== */
+.topbar{justify-content:flex-end;padding:14px 16px 0}
+.menubtn{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.4);color:var(--ink);font-size:20px;line-height:1;cursor:pointer;padding:0}
+.menubtn:focus-visible,.mrow:focus-visible{outline:3px solid #8aa0ff;outline-offset:2px}
+.menu{position:fixed;top:calc(env(safe-area-inset-top,0px) + 58px);right:16px;z-index:25;min-width:220px;padding:6px;border-radius:22px;background:linear-gradient(160deg,rgba(255,255,255,.78),rgba(255,255,255,.5));-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,.8);box-shadow:0 18px 44px rgba(90,80,170,.26)}
+.mrow{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;padding:12px 14px;border-radius:14px;cursor:pointer;text-align:left}
+.mrow+.mrow{border-top:1px solid rgba(255,255,255,.75);border-radius:0 0 14px 14px}
+.mrow small{font-size:12px;color:var(--mute)}
+.mrow small:empty{display:none}
+.hint:empty{display:none}
+.mhero{padding:18px 18px 16px}
+.mmotto{margin-bottom:0}
 </style>
 </head>
 <body>
 <div class="blob b1"></div>
 <div class="warn" id="saveWarn" hidden>儲存失敗：瀏覽器儲存空間可能已滿或被禁用，請即刻用「備份 / 還原」複製備份。（點一下關閉）</div><div class="blob b2"></div><div class="blob b3"></div>
-<header><h1 id="pageTitle">計數器</h1><button class="sbtn" id="sleepToggle"></button></header>
+<header class="topbar"><button class="menubtn" id="menuBtn" aria-label="更多" aria-haspopup="true">⋯</button></header>
+<div class="menu" id="menu" hidden>
+  <button class="mrow" id="sleepToggle"><span id="sleepLabel">🌙 睡覺</span><small id="sleepInfo"></small></button>
+  <button class="mrow" id="bkBtn">備份 / 還原</button>
+</div>
 <div id="viewCount">
 <main><div class="grid" id="grid"></div></main>
-<div class="hint" id="sleepInfo"></div>
-<div class="hint">按一下 +1，長按格子可編輯。數字係今日次數，00:00 自動清零</div>
-<div class="hint"><button class="btn" id="bkBtn">備份 / 還原</button></div>
+<div class="hint" id="hint"></div>
 </div>
 <div id="viewLog" hidden><main id="logList"></main></div>
 <div id="viewMe" hidden><main id="meList"></main></div>
@@ -378,6 +392,7 @@ body::after{opacity:.22}
   var warned=false;
   function warn(){if(warned)return;warned=true;var w=document.getElementById("saveWarn");if(w){w.hidden=false;w.onclick=function(){w.hidden=true;};}}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  function updateHint(){var h=document.getElementById("hint");if(!h)return;h.textContent=!items.length?"按「+」新增第一個計數項目":(!logs.length?"按一下格子 +1，長按可以編輯":"");}
   function hueAt(i,n){var step=n>1?Math.min(28,135/(n-1)):0;return 205+i*step;}
   var lastDay=dkey(new Date());
   function checkDay(){if(dkey(new Date())!==lastDay){render();return true;}return false;}
@@ -402,7 +417,7 @@ body::after{opacity:.22}
   var current=null;
 
   function render(){
-    lastDay=dkey(new Date());
+    lastDay=dkey(new Date());updateHint();
     grid.innerHTML="";
     items.forEach(function(it,i){
       var b=document.createElement("button");
@@ -446,6 +461,7 @@ body::after{opacity:.22}
         if(long){long=false;return;}
         logs.push({t:Date.now(),id:it.id,name:it.name});saveLogs();
         if(!checkDay())paint();
+        updateHint();
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -499,7 +515,7 @@ body::after{opacity:.22}
     if(e.key==="Enter"&&e.target.tagName!=="BUTTON")commit();
     if(e.key==="Escape")closeModal();
   });
-  var logList=document.getElementById("logList"),pageTitle=document.getElementById("pageTitle"),openDays={};
+  var logList=document.getElementById("logList"),openDays={};
   function p2(n){return n<10?"0"+n:""+n;}
   function dkey(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());}
   function dlabel(d){
@@ -615,15 +631,10 @@ body::after{opacity:.22}
   }
   function renderMe(){
     meList.innerHTML="";
-    var st0=calcStreak(),card=el("section","mhero");
+    var card=el("section","mhero");
     card.setAttribute("role","button");card.tabIndex=0;
     card.appendChild(el("div","mnick",profile.nick||"設定你嘅暱稱"));
     card.appendChild(el("div","mmotto",profile.motto||"寫一句屬於你嘅格言"));
-    var stats=el("div","mstats");
-    [["連續",st0.streak+" 天"],["今日",todayTotal()+" 次"],["累計",st0.days+" 天"]].forEach(function(x){
-      var c=el("div","mstat");c.appendChild(el("b","",x[1]));c.appendChild(el("span","",x[0]));stats.appendChild(c);
-    });
-    card.appendChild(stats);
     card.addEventListener("click",openProf);
     card.addEventListener("keydown",function(e){if(e.key==="Enter")openProf();});
     meList.appendChild(card);
@@ -631,7 +642,6 @@ body::after{opacity:.22}
     if(!me.some(function(m){return m.id===meSel;}))meSel=me.length?me[0].id:null;
     var cur=me.filter(function(m){return m.id===meSel;})[0];
 
-    meList.appendChild(section("我想成為／做到","寫低身份或者目標，再綁定你每日做嘅行為。"));
     var row=el("div","idrow");
     me.forEach(function(m,i){
       var st=entryState(m);
@@ -728,6 +738,10 @@ body::after{opacity:.22}
   });
   meModal.addEventListener("click",function(e){if(e.target===meModal)closeMe();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&meModal.classList.contains("open"))closeMe();});
+  var menu=document.getElementById("menu"),menuBtn=document.getElementById("menuBtn");
+  menuBtn.addEventListener("click",function(e){e.stopPropagation();menu.hidden=!menu.hidden;});
+  document.addEventListener("click",function(e){if(!menu.hidden&&!menu.contains(e.target))menu.hidden=true;});
+  document.getElementById("bkBtn").addEventListener("click",function(){menu.hidden=true;});
   var tabs=document.querySelectorAll(".tab");
   tabs.forEach(function(t){t.addEventListener("click",function(){
     var tab=t.getAttribute("data-tab"),isLog=tab==="log",isMe=tab==="me";
@@ -735,7 +749,7 @@ body::after{opacity:.22}
     document.getElementById("viewCount").hidden=(tab!=="count");
     document.getElementById("viewLog").hidden=!isLog;
     document.getElementById("viewMe").hidden=!isMe;
-    pageTitle.textContent=isLog?"記錄":(isMe?"我":"計數器");
+    
     if(isLog)renderLog();if(isMe)renderMe();window.scrollTo(0,0);
   });});
   function cleanBackup(d){
@@ -774,7 +788,7 @@ body::after{opacity:.22}
     else if(s&&w){var m=Math.round((w.t-s.t)/60000);txt="睡咗 "+Math.floor(m/60)+" 小時 "+(m%60)+" 分（"+hm(s.t)+" → "+hm(w.t)+"）";}
     else if(w)txt="最近起身："+hm(w.t);
     document.getElementById("sleepInfo").textContent=txt;
-    tgl.textContent=isSleeping()?"☀️ 起身":"🌙 睡覺";
+    document.getElementById("sleepLabel").textContent=isSleeping()?"☀️ 起身":"🌙 睡覺";
   }
   function sysLog(id,name){logs.push({t:Date.now(),id:id,name:name});saveLogs();sleepInfo();}
   var tgl=document.getElementById("sleepToggle");
