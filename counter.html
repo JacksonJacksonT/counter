@@ -317,7 +317,7 @@ body::after{opacity:.22}
 .backbar{display:flex;align-items:center;gap:12px;padding:14px 16px 0;max-width:760px;margin:0 auto}
 .bartitle{font-weight:700;font-size:17px}
 .btn.small{padding:6px 12px;font-size:13px}
-#jModalText{height:170px}
+#jModalText{height:240px}
 .jitem{display:flex;align-items:center;gap:14px;padding:11px 16px;margin-bottom:8px;border-radius:18px}
 .jd{flex:none;display:flex;flex-direction:column;align-items:center;min-width:40px;font-size:15px;font-weight:700;line-height:1.2}
 .jd small{font-size:11px;font-weight:500;color:var(--mute)}
@@ -403,7 +403,7 @@ body::after{opacity:.22}
 <div class="modal" id="jModal" role="dialog" aria-modal="true">
   <div class="sheet">
     <h2 id="jModalTitle"></h2>
-    <textarea id="jModalText" maxlength="300" aria-label="記錄內容"></textarea>
+    <textarea id="jModalText" maxlength="1500" aria-label="記錄內容"></textarea>
     <div class="row"><button class="btn danger" id="jDel">刪除</button><button class="btn" id="jCancel">取消</button><button class="btn primary" id="jSave">儲存</button></div>
   </div>
 </div>
@@ -785,12 +785,12 @@ body::after{opacity:.22}
   try{
     var jr=localStorage.getItem(JKEY);
     if(jr){var jp=JSON.parse(jr);if(jp&&typeof jp==="object"&&!Array.isArray(jp)){
-      Object.keys(jp).forEach(function(k){var v=jp[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")journal[k]={text:v.text.slice(0,300),t:typeof v.t==="number"?v.t:0};});
+      Object.keys(jp).forEach(function(k){var v=jp[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")journal[k]={text:v.text.slice(0,1500),t:typeof v.t==="number"?v.t:0};});
     }}
   }catch(e){}
   function saveJournal(){try{localStorage.setItem(JKEY,JSON.stringify(journal));}catch(e){warn();}}
   function setEntry(k,text){
-    text=String(text).slice(0,300);
+    text=String(text).slice(0,1500);
     if(text.trim())journal[k]={text:text,t:Date.now()};else delete journal[k];
     saveJournal();
   }
@@ -803,16 +803,17 @@ body::after{opacity:.22}
     var tk=dkey(new Date()),card=el("section","jcard jtoday");
     card.appendChild(el("div","jdate",dlabel(new Date())));
     var ta=document.createElement("textarea");
-    ta.className="jta";ta.maxLength=300;ta.rows=4;ta.setAttribute("data-k",tk);ta.setAttribute("aria-label","今日記錄");
+    ta.className="jta";ta.maxLength=1500;ta.rows=4;ta.setAttribute("data-k",tk);ta.setAttribute("aria-label","今日記錄");
     ta.placeholder="今日發生咗乜？有咩想法？簡短寫幾句就得。";
     ta.value=(journal[tk]&&journal[tk].text)||"";
-    var cnt=el("div","jcount",ta.value.length+" / 300");
+    function fit(){ta.style.height="auto";ta.style.height=Math.max(110,ta.scrollHeight)+"px";}
+    var cnt=el("div","jcount",ta.value.length+" / 1500");
     ta.addEventListener("input",function(){
-      cnt.textContent=ta.value.length+" / 300";
+      cnt.textContent=ta.value.length+" / 1500";fit();
       clearTimeout(jTimer);jTimer=setTimeout(function(){setEntry(tk,ta.value);},400);
     });
     ta.addEventListener("blur",function(){clearTimeout(jTimer);setEntry(tk,ta.value);});
-    card.appendChild(ta);card.appendChild(cnt);jList.appendChild(card);
+    card.appendChild(ta);card.appendChild(cnt);jList.appendChild(card);fit();
     var keys=Object.keys(journal).filter(function(k){return k!==tk;}).sort().reverse();
     if(keys.length)jList.appendChild(el("div","jsec","過往"));
     keys.forEach(function(k){
@@ -917,7 +918,7 @@ body::after{opacity:.22}
     var jn=null;
     if(d.journal&&typeof d.journal==="object"&&!Array.isArray(d.journal)){
       jn={};
-      Object.keys(d.journal).forEach(function(k){var v=d.journal[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")jn[k]={text:v.text.slice(0,300),t:typeof v.t==="number"?v.t:0};});
+      Object.keys(d.journal).forEach(function(k){var v=d.journal[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")jn[k]={text:v.text.slice(0,1500),t:typeof v.t==="number"?v.t:0};});
     }
     return {journal:jn,items:its,logs:lgs,me:Array.isArray(d.me)?mes:null,profile:prof};
   }
