@@ -335,12 +335,39 @@ body::after{opacity:.22}
 .ring{-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px))}
 .tile.add{height:72px;justify-content:center;font-size:30px}
 .tile.done::after{top:5px;right:8px;width:16px;height:16px;font-size:10px;line-height:16px}
+/* ===== 等級系統 ===== */
+.topbar{justify-content:space-between}
+.lvpill{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-radius:99px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.4);color:var(--ink);font:inherit;cursor:pointer}
+.lvpill b{font-size:14px}
+.lvbar{display:block;width:54px;height:6px;border-radius:99px;background:rgba(255,255,255,.75);overflow:hidden}
+.lvbar i{display:block;height:100%;width:0;border-radius:99px;background:var(--grad);transition:width .5s}
+.lvrow{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 0 10px}
+.lvbadge{padding:3px 12px;border-radius:99px;background:var(--grad);color:#fff;font-weight:700;font-size:14px}
+.lvtitle{font-weight:700}
+.xpbar{height:8px;border-radius:99px;background:rgba(255,255,255,.6);overflow:hidden}
+.xpbar i{display:block;height:100%;border-radius:99px;background:var(--grad);transition:width .6s}
+.xptxt{font-size:12px;color:var(--mute);margin-top:6px}
+.xphint{font-size:11px;color:var(--mute);margin-top:8px;opacity:.85}
+.xpfloat{position:fixed;z-index:40;pointer-events:none;transform:translate(-50%,-50%);padding:4px 12px;border-radius:99px;background:var(--grad);color:#fff;font-weight:800;font-size:16px;box-shadow:0 6px 18px rgba(150,100,240,.4);animation:xpup 1s ease-out forwards}
+@keyframes xpup{0%{opacity:0;transform:translate(-50%,-20%) scale(.8)}15%{opacity:1;transform:translate(-50%,-60%) scale(1.05)}100%{opacity:0;transform:translate(-50%,-190%) scale(1)}}
+.lvup{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(120,110,200,.28);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);animation:lvfade .3s}
+.wave{position:absolute;left:50%;top:50%;width:80px;height:80px;margin:-40px 0 0 -40px;border-radius:50%;border:2px solid rgba(255,255,255,.9);opacity:0;animation:lvwave 1.8s ease-out infinite}
+.wave.w2{animation-delay:.6s}
+@keyframes lvwave{0%{transform:scale(1);opacity:.9}100%{transform:scale(9);opacity:0}}
+@keyframes lvfade{from{opacity:0}to{opacity:1}}
+@keyframes lvpop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+.lvcard{position:relative;text-align:center;padding:26px 40px;border-radius:32px;background:linear-gradient(160deg,rgba(255,255,255,.85),rgba(255,255,255,.55));border:1px solid rgba(255,255,255,.9);box-shadow:var(--rim),0 24px 60px rgba(100,80,200,.35);animation:lvpop .5s cubic-bezier(.3,1.5,.5,1)}
+.lvt{font-size:13px;font-weight:800;letter-spacing:3px;color:var(--mute)}
+.lvn{font-size:58px;font-weight:800;line-height:1.1;margin:6px 0;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lvs{font-size:17px;font-weight:700}
+.lvh{font-size:12px;color:var(--mute);margin-top:12px}
+@media (prefers-reduced-motion:reduce){.xpfloat,.wave,.lvcard{animation:none}}
 </style>
 </head>
 <body>
 <div class="blob b1"></div>
 <div class="warn" id="saveWarn" hidden>儲存失敗：瀏覽器儲存空間可能已滿或被禁用，請即刻用「備份 / 還原」複製備份。（點一下關閉）</div><div class="blob b2"></div><div class="blob b3"></div>
-<header class="topbar"><button class="menubtn" id="menuBtn" aria-label="更多" aria-haspopup="true">⋯</button></header>
+<header class="topbar"><button class="lvpill" id="lvPill" aria-label="等級"><b id="lvNum">Lv 1</b><span class="lvbar"><i id="lvFill"></i></span></button><button class="menubtn" id="menuBtn" aria-label="更多" aria-haspopup="true">⋯</button></header>
 <div class="menu" id="menu" hidden>
   <button class="mrow" id="sleepToggle"><span id="sleepLabel">🌙 睡覺</span><small id="sleepInfo"></small></button>
   <button class="mrow" id="logBtn"><span>行為記錄</span><small>每日各項次數</small></button>
@@ -458,7 +485,7 @@ body::after{opacity:.22}
   var current=null;
 
   function render(){
-    lastDay=dkey(new Date());updateHint();
+    lastDay=dkey(new Date());updateHint();refreshLv();
     grid.innerHTML="";
     items.forEach(function(it,i){
       var b=document.createElement("button");
@@ -500,10 +527,12 @@ body::after{opacity:.22}
       b.addEventListener("contextmenu",function(e){e.preventDefault();});
       b.addEventListener("click",function(){
         if(long){long=false;return;}
+        var xp0=computeXp(),rc=b.getBoundingClientRect();
         logs.push({t:Date.now(),id:it.id,name:it.name});saveLogs();
         if(!checkDay())paint();
         updateHint();
         haptic(goal&&todayCount(it.id)===goal?2:1);
+        xpFeedback(xp0,rc);
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -619,7 +648,7 @@ body::after{opacity:.22}
   }
   var bk=document.getElementById("bkModal"),bkText=document.getElementById("bkText"),bkMsg=document.getElementById("bkMsg");
   document.getElementById("bkBtn").addEventListener("click",function(){
-    bkText.value=JSON.stringify({v:1,items:items,logs:logs,me:me,profile:profile,journal:journal});
+    bkText.value=JSON.stringify({v:1,items:items,logs:logs,me:me,profile:profile,journal:journal,xp:totalXp()});
     bkMsg.textContent="複製下面嘅文字，去另一部裝置貼入來，再按「還原」。";
     bk.classList.add("open");
   });
@@ -638,6 +667,8 @@ body::after{opacity:.22}
     if(d.me){me=d.me;saveMe();}
     if(d.profile){profile=d.profile;saveProfile();}
     if(d.journal){journal=d.journal;saveJournal();}
+    if(typeof d.xp==="number"&&d.xp>xpStore.peak)xpStore.peak=d.xp;
+    xpStore.seen=Math.max(xpStore.seen,lvInfo().L);saveXp();refreshLv();
     items.forEach(function(it){if(!it.id)it.id=uid();});
     save();saveLogs();render();renderLog();sleepInfo();bk.classList.remove("open");
   });
@@ -678,6 +709,11 @@ body::after{opacity:.22}
     card.setAttribute("role","button");card.tabIndex=0;
     card.appendChild(el("div","mnick",profile.nick||"設定你嘅暱稱"));
     card.appendChild(el("div","mmotto",profile.motto||"寫一句屬於你嘅格言"));
+    var li=lvInfo(),lv=el("div","lvrow");
+    lv.appendChild(el("span","lvbadge","Lv "+li.L));lv.appendChild(el("span","lvtitle",li.title));card.appendChild(lv);
+    var xb=el("div","xpbar"),xf=el("i");xf.style.width=li.pct+"%";xb.appendChild(xf);card.appendChild(xb);
+    card.appendChild(el("div","xptxt",li.into+" / "+li.need+" XP"));
+    card.appendChild(el("div","xphint","按一下 +10 XP，達標 +20，寫日記 +15；每個行為每日有上限"));
     card.addEventListener("click",openProf);
     card.addEventListener("keydown",function(e){if(e.key==="Enter")openProf();});
     meList.appendChild(card);
@@ -793,6 +829,7 @@ body::after{opacity:.22}
     text=String(text).slice(0,1500);
     if(text.trim())journal[k]={text:text,t:Date.now()};else delete journal[k];
     saveJournal();
+    refreshLv();
   }
   function flushJ(){var ta=document.querySelector("#jList .jta");if(ta)setEntry(ta.getAttribute("data-k"),ta.value);}
   var jList=document.getElementById("jList"),jCur=null,jTimer=null;
@@ -836,7 +873,7 @@ body::after{opacity:.22}
   function closeJ(){document.getElementById("jModal").classList.remove("open");jCur=null;}
   document.getElementById("jSave").addEventListener("click",function(){
     if(jCur)setEntry(jCur,document.getElementById("jModalText").value);
-    closeJ();renderJournal();
+    closeJ();renderJournal();checkLv();
   });
   document.getElementById("jDel").addEventListener("click",function(){
     if(!jCur)return;
@@ -870,6 +907,69 @@ body::after{opacity:.22}
     hapLabel();haptic(1);
   });
   hapLabel();
+  var XKEY="counter-xp-v1",xpStore={peak:0,seen:0};
+  try{var xr=localStorage.getItem(XKEY);if(xr){var xo=JSON.parse(xr);if(xo&&typeof xo==="object")xpStore={peak:+xo.peak||0,seen:+xo.seen||0};}}catch(e){}
+  function saveXp(){try{localStorage.setItem(XKEY,JSON.stringify(xpStore));}catch(e){}}
+  var XP_TAP=10,XP_GOAL=20,XP_DIARY=15;
+  var TITLES=[[1,"初心者"],[3,"起步中"],[5,"穩定中"],[8,"習慣養成"],[12,"自律中"],[17,"持之以恆"],[24,"成為自己"]];
+  function goalOf(id){var f=itemOf(id);return (f&&typeof f.it.goal==="number"&&f.it.goal>0)?f.it.goal:0;}
+  function computeXp(){
+    var per={},xp=0;
+    logs.forEach(function(l){
+      if(l.id==="sys-sleep"||l.id==="sys-wake")return;
+      var k=dkey(new Date(l.t))+"|"+l.id;per[k]=(per[k]||0)+1;
+    });
+    Object.keys(per).forEach(function(k){
+      var id=k.slice(11),n=per[k],g=goalOf(id),cap=g?Math.ceil(g*1.5):10;
+      xp+=Math.min(n,cap)*XP_TAP;
+      if(g&&n>=g)xp+=XP_GOAL;
+    });
+    xp+=Object.keys(journal).filter(function(k){return journal[k]&&journal[k].text&&journal[k].text.trim();}).length*XP_DIARY;
+    return xp;
+  }
+  function totalXp(){var c=computeXp();if(c>xpStore.peak){xpStore.peak=c;saveXp();}return Math.max(c,xpStore.peak);}
+  function cum(L){return 90*(L-1)+15*L*(L-1);}
+  function levelOf(xp){var L=1;while(cum(L+1)<=xp)L++;return L;}
+  function titleOf(L){var t=TITLES[0][1];TITLES.forEach(function(x){if(L>=x[0])t=x[1];});return t;}
+  function lvInfo(){
+    var xp=totalXp(),L=levelOf(xp),a=cum(L),b=cum(L+1);
+    return {xp:xp,L:L,title:titleOf(L),into:xp-a,need:b-a,pct:Math.min(100,Math.round((xp-a)/(b-a)*100))};
+  }
+  function refreshLv(){
+    var i=lvInfo(),n=document.getElementById("lvNum"),f=document.getElementById("lvFill");
+    if(n)n.textContent="Lv "+i.L;
+    if(f)f.style.width=i.pct+"%";
+    return i;
+  }
+  if(!xpStore.seen){xpStore.seen=levelOf(totalXp());saveXp();}
+  function floatXp(rc,gain){
+    var d=document.createElement("div");d.className="xpfloat";d.textContent="+"+gain+" XP";
+    d.style.left=(rc.left+rc.width/2)+"px";d.style.top=(rc.top+rc.height/2)+"px";
+    document.body.appendChild(d);
+    setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},1000);
+  }
+  function levelUp(i){
+    var prevTitle=titleOf(xpStore.seen||1);
+    xpStore.seen=i.L;saveXp();
+    var ov=document.createElement("div");ov.className="lvup";
+    ov.appendChild(el("span","wave"));ov.appendChild(el("span","wave w2"));
+    var card=el("div","lvcard");
+    card.appendChild(el("div","lvt","LEVEL UP"));
+    card.appendChild(el("div","lvn","Lv "+i.L));
+    card.appendChild(el("div","lvs",i.title!==prevTitle?"新稱號：「"+i.title+"」":i.title));
+    card.appendChild(el("div","lvh","按任何位置繼續"));
+    ov.appendChild(card);document.body.appendChild(ov);
+    function close(){if(ov.parentNode)ov.parentNode.removeChild(ov);}
+    ov.addEventListener("click",close);setTimeout(close,4200);
+    haptic(2);
+  }
+  function checkLv(){var i=refreshLv();if(i.L>xpStore.seen)levelUp(i);}
+  function xpFeedback(xp0,rc){
+    var gain=computeXp()-xp0;
+    if(gain>0)floatXp(rc,gain);
+    checkLv();
+  }
+  document.getElementById("lvPill").addEventListener("click",function(){showView("me");});
   var menu=document.getElementById("menu"),menuBtn=document.getElementById("menuBtn");
   menuBtn.addEventListener("click",function(e){e.stopPropagation();menu.hidden=!menu.hidden;});
   document.addEventListener("click",function(e){if(!menu.hidden&&!menu.contains(e.target))menu.hidden=true;});
@@ -877,7 +977,7 @@ body::after{opacity:.22}
   var tabs=document.querySelectorAll(".tab");
   var lastTab="count",VIEWS={count:"viewCount",journal:"viewJournal",me:"viewMe",log:"viewLog"};
   function showView(name){
-    if(name!=="journal")flushJ();
+    if(name!=="journal"){flushJ();checkLv();}
     Object.keys(VIEWS).forEach(function(k){document.getElementById(VIEWS[k]).hidden=(k!==name);});
     tabs.forEach(function(o){o.setAttribute("aria-selected",o.getAttribute("data-tab")===name);});
     if(name!=="log")lastTab=name;
@@ -920,7 +1020,8 @@ body::after{opacity:.22}
       jn={};
       Object.keys(d.journal).forEach(function(k){var v=d.journal[k];if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v.text==="string")jn[k]={text:v.text.slice(0,1500),t:typeof v.t==="number"?v.t:0};});
     }
-    return {journal:jn,items:its,logs:lgs,me:Array.isArray(d.me)?mes:null,profile:prof};
+    var xpv=(typeof d.xp==="number"&&isFinite(d.xp)&&d.xp>=0)?Math.floor(d.xp):null;
+    return {xp:xpv,journal:jn,items:its,logs:lgs,me:Array.isArray(d.me)?mes:null,profile:prof};
   }
   function lastOf(id){var b=null;logs.forEach(function(l){if(l.id===id&&(!b||l.t>b.t))b=l;});return b;}
   function hm(t){var d=new Date(t);return p2(d.getHours())+":"+p2(d.getMinutes());}
