@@ -362,6 +362,16 @@ body::after{opacity:.22}
 .lvs{font-size:17px;font-weight:700}
 .lvh{font-size:12px;color:var(--mute);margin-top:12px}
 @media (prefers-reduced-motion:reduce){.xpfloat,.wave,.lvcard{animation:none}}
+/* ===== 身份階段 ===== */
+.xpfloat{border-radius:18px;text-align:center;line-height:1.25}
+.xpfloat small{display:block;font-size:11px;font-weight:600;opacity:.95}
+.dstage{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.stbadge{padding:3px 12px;border-radius:99px;background:var(--grad);color:#fff;font-weight:700;font-size:13px}
+.stvotes{font-size:13px;color:var(--mute)}
+.stbar{display:block;height:6px;border-radius:99px;background:rgba(255,255,255,.6);overflow:hidden;margin-bottom:12px}
+.stbar i{display:block;height:100%;border-radius:99px;background:var(--grad);transition:width .6s}
+.stagetoast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 64px);left:50%;z-index:50;transform:translate(-50%,0);padding:10px 18px;border-radius:99px;font-weight:700;font-size:14px;white-space:nowrap;color:var(--ink);background:linear-gradient(160deg,rgba(255,255,255,.92),rgba(255,255,255,.62));border:1px solid rgba(255,255,255,.9);box-shadow:var(--rim),0 12px 30px rgba(100,80,200,.3);animation:toastin 3.2s ease forwards}
+@keyframes toastin{0%{opacity:0;transform:translate(-50%,-12px)}10%{opacity:1;transform:translate(-50%,0)}85%{opacity:1}100%{opacity:0}}
 </style>
 </head>
 <body>
@@ -532,7 +542,7 @@ body::after{opacity:.22}
         if(!checkDay())paint();
         updateHint();
         haptic(goal&&todayCount(it.id)===goal?2:1);
-        xpFeedback(xp0,rc);
+        xpFeedback(xp0,rc,it.id);
         c.classList.remove("bump");void c.offsetWidth;c.classList.add("bump");
         save();
       });
@@ -705,6 +715,7 @@ body::after{opacity:.22}
   }
   function renderMe(){
     meList.innerHTML="";
+    var vm=voteMap();syncStages(vm,false);
     var card=el("section","mhero");
     card.setAttribute("role","button");card.tabIndex=0;
     card.appendChild(el("div","mnick",profile.nick||"設定你嘅暱稱"));
@@ -726,7 +737,7 @@ body::after{opacity:.22}
       var st=entryState(m);
       var c=el("button","idchip"+(m.id===meSel?" on":""));c.style.setProperty("--h",hueAt(i,me.length));
       c.appendChild(el("span","idtext",m.text));
-      c.appendChild(el("span","idsub",st.total?(st.done+"/"+st.total+" 行為達標"):"未綁定行為"));
+      c.appendChild(el("span","idsub",st.total?(stageFor(m,vm).name+" · "+st.done+"/"+st.total+" 達標"):"未綁定行為"));
       c.addEventListener("click",function(){meSel=m.id;renderMe();});
       row.appendChild(c);
     });
@@ -744,6 +755,11 @@ body::after{opacity:.22}
     var top=el("div","dtop");top.appendChild(el("div","dtext",cur.text));
     var eb=el("button","btn small","編輯");eb.addEventListener("click",function(){openMe(cur);});
     top.appendChild(eb);pn.appendChild(top);
+    if(cur.links&&cur.links.length){
+      var sg=stageFor(cur,vm),sr=el("div","dstage");
+      sr.appendChild(el("span","stbadge",sg.name));sr.appendChild(el("span","stvotes","已投 "+sg.v+" 票"));pn.appendChild(sr);
+      var sb=el("span","stbar"),sf=el("i");sf.style.width=sg.pct+"%";sb.appendChild(sf);pn.appendChild(sb);
+    }
     if(st.total){
       var bar=el("span","pbar"),fill=el("i");fill.style.width=Math.round(st.done/st.total*100)+"%";
       bar.appendChild(fill);pn.appendChild(bar);
@@ -907,6 +923,46 @@ body::after{opacity:.22}
     hapLabel();haptic(1);
   });
   hapLabel();
+  var SKEY="counter-stage-v1",stageSeen={};
+  try{var sr0=localStorage.getItem(SKEY);if(sr0){var so=JSON.parse(sr0);if(so&&typeof so==="object")stageSeen=so;}}catch(e){}
+  function saveStages(){try{localStorage.setItem(SKEY,JSON.stringify(stageSeen));}catch(e){}}
+  var STAGES=[[0,"起步"],[20,"穩定"],[60,"習慣"],[150,"成為"]];
+  function voteMap(){
+    var per={},out={};
+    logs.forEach(function(l){
+      if(l.id==="sys-sleep"||l.id==="sys-wake")return;
+      var k=dkey(new Date(l.t))+"|"+l.id;per[k]=(per[k]||0)+1;
+    });
+    Object.keys(per).forEach(function(k){
+      var id=k.slice(11),g=goalOf(id),cap=g?Math.ceil(g*1.5):10;
+      out[id]=(out[id]||0)+Math.min(per[k],cap);
+    });
+    return out;
+  }
+  function votesOf(m,vm){var n=0;(m.links||[]).forEach(function(id){n+=vm[id]||0;});return n;}
+  function tierStart(k){return 150+150*k+25*k*(k-1);}
+  function stageStart(i){return i<4?STAGES[i][0]:tierStart(i-3);}
+  function stageName(i){return i<4?STAGES[i][1]:"成為 Lv."+(i-2);}
+  function stageOf(v){var i=0;while(v>=stageStart(i+1))i++;return i;}
+  function stageFor(m,vm){
+    var v=votesOf(m,vm),i=Math.max(stageOf(v),stageSeen[m.id]||0),a=stageStart(i),b=stageStart(i+1);
+    var pct=Math.max(0,Math.min(100,Math.round((v-a)/(b-a)*100)));
+    return {v:v,i:i,name:stageName(i),pct:pct};
+  }
+  function stageToast(text,name){
+    var t=el("div","stagetoast","「"+text+"」晉升為「"+name+"」");
+    document.body.appendChild(t);
+    setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},3200);
+  }
+  function syncStages(vm,announce){
+    var changed=false;
+    me.forEach(function(m){
+      var i=stageOf(votesOf(m,vm)),old=stageSeen[m.id];
+      if(old===undefined){stageSeen[m.id]=i;changed=true;}
+      else if(i>old){stageSeen[m.id]=i;changed=true;if(announce)stageToast(m.text,stageName(i));}
+    });
+    if(changed)saveStages();
+  }
   var XKEY="counter-xp-v1",xpStore={peak:0,seen:0};
   try{var xr=localStorage.getItem(XKEY);if(xr){var xo=JSON.parse(xr);if(xo&&typeof xo==="object")xpStore={peak:+xo.peak||0,seen:+xo.seen||0};}}catch(e){}
   function saveXp(){try{localStorage.setItem(XKEY,JSON.stringify(xpStore));}catch(e){}}
@@ -942,8 +998,9 @@ body::after{opacity:.22}
     return i;
   }
   if(!xpStore.seen){xpStore.seen=levelOf(totalXp());saveXp();}
-  function floatXp(rc,gain){
+  function floatXp(rc,gain,names){
     var d=document.createElement("div");d.className="xpfloat";d.textContent="+"+gain+" XP";
+    if(names&&names.length){var sm=document.createElement("small");sm.textContent="「"+names.slice(0,2).join("、")+"」+1 票";d.appendChild(sm);}
     d.style.left=(rc.left+rc.width/2)+"px";d.style.top=(rc.top+rc.height/2)+"px";
     document.body.appendChild(d);
     setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},1000);
@@ -964,9 +1021,13 @@ body::after{opacity:.22}
     haptic(2);
   }
   function checkLv(){var i=refreshLv();if(i.L>xpStore.seen)levelUp(i);}
-  function xpFeedback(xp0,rc){
+  function xpFeedback(xp0,rc,id){
     var gain=computeXp()-xp0;
-    if(gain>0)floatXp(rc,gain);
+    if(gain>0){
+      var names=me.filter(function(m){return m.links&&m.links.indexOf(id)>=0;}).map(function(m){return m.text;});
+      floatXp(rc,gain,names);
+    }
+    syncStages(voteMap(),true);
     checkLv();
   }
   document.getElementById("lvPill").addEventListener("click",function(){showView("me");});
